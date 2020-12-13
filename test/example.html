@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Emmet-like Dom Builder</title>
+  <link rel="stylesheet" href="style/base.css">
+  <link rel="stylesheet" href="style/main.css">
+  <!-- <script src="../dist/domexp.min.js"></script> -->
+  <script src="../src/domexp.js"></script>
+</head>
+<body>
+</head>
+<body>
+<h1>Dom Expression Language</h1>
+<script>
+
+const log = console.log.bind (console)
+const { DomExp, dom } = modules.domexp;
+
+log(
+  dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
+  dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem .outerHTML,
+)
+
+// TODO so, $ & e.a. should be allowed as both an atom and a postfix operator
+// FIXME 'ul > (li  %)* #menu' parses incorrectly
+// const Menu = new DomExp ('ul > (li %)* #menu')
+// REVIEW the operator precedence, I think it is much better to have postfix % bind stronger than |. 
+
+const Menu = new DomExp ('ul > (li.n?number | li.s?string % > p %) *')
+log (Menu.ast)
+const domIndex = Symbol('domIndex')
+
+function Dom (domexp, data) {
+  const build = new DomExp (domexp) .render (data)
+  build.elem [domIndex] = build
+  return build.elem
+}
+
+const menu = Menu .render (["foo",2,"bar",4]).elem
+log (menu)
+document.body.append (menu)
+
+const buttons = ['prev', 'now', 'next']
+let view = Dom ('div > button%*', buttons)
+log (view)
+
+view.addEventListener ('click', evt => {
+  log ('click from', evt.currentTarget[domIndex], evt.target)
+})
+
+document.body.append (view)
+
+</script>
+</body>
+</html>
