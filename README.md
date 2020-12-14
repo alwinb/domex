@@ -10,7 +10,7 @@ The language is inspired by [Emmet][1], which I think is a really nice algebraic
 DOM Expressions are very concise and they look quite a bit like datatype declarations of functional languages. 
 So I think of them as a description language for the graphical user interface of a web application. I have some ideas for creating a library for web UI component programming with it.  
 
-At the moment it is a **very small** library, the minified version is around **3k** bytes. 
+At the moment it is a **very small** library, the minified version is around **4k** bytes. 
 
 
 [1]: https://docs.emmet.io/abbreviations/
@@ -73,15 +73,17 @@ Grammar
 
 _E_ ::=   
 
-tag-name     |     _E_ `>` _E_    |     _E_ `+` _E_
+tag-name     |     Ident  
 
-_E_ `*`     |     _E_ `?`test      |     _E_ `|` _E_  
+_E_ `|` _E_     |     _E_ `>` _E_     |     _E_ `+` _E_  
+
+_E_ `*`     |     _E_ `*`prop     |     _E_ `?`test  
 
 `(` _E_ `)`  
 
-_E_ `.`class    |     _E_ `#`id     |     _E_ `@`ref  
+_E_ `.`class     |     _E_ `#`id     |     _E_ `@`ref  
 
-_E_ `$`    |     _E_ `%`      |     _E_ `%`prop  
+_E_ `{`text`}` |     _E_ `$`     |     _E_ `%`     |     _E_ `%`prop  
 </center>
 
 **TODO**  
@@ -125,10 +127,9 @@ Note that the `*` operator can be nested.
 ### Text and Data
 
 - _E_ `%` — Appends the key of the current input to the last element of _E_ as a text node. 
-- _E_ `%` — Appends a string representation of the current input to the last element of _E_ as a text node. 
-- _E_ `%`_prop_ — Appends a string representation of the current input's _prop_ property to the last element of _E_ as a text node. 
-
-
+- _E_ `%` — Appends a string representation of the current input to the last element of _E_. 
+- _E_ `%`_prop_ — Appends a string representation of the current input's _prop_ property to the last element of _E_. 
+- _E_ `{`_text_`}` — appends literal text _text_ to the last element of _E_.
 
 API
 ---

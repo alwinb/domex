@@ -1,18 +1,27 @@
+const util = require ('util')
 const log = console.log.bind (console)
-const { DomExp, parse } = require ('../src/domexp')
+const { DomExp, parse, dom } = require ('../src/domexp')
 
 
 // Test
 // ====
 
-parse ('Foo := a+b|(c)+d')
+// parse ('Foo := a+b|(c)+d')
 
 
-log (new DomExp ('a.test#sx > a@A $ | b@b ') .render ('sample'))
-log (new DomExp ('ul> ( li?string $ | li?number $ )* .foo') .render ([1,2,3]))
+const lib = {
+  Menu: new DomExp (`ul > ((li > a $ %) + Menu?object)*`)
+}
 
-log( dom `(a.test#sx > a@A $)* | b@b` ([]) )
-
+log(
+util.inspect(
+  // new DomExp ('a.test#sx > a@A $ | b@b ') .render ('sample'),
+  // new DomExp ('ul> (li?string % | li?number %)* .foo') .render ([1,2,3]),
+  // dom `(a.test#sx > a@A $)* | b@b` ([]),
+  // dom `span*one` ({one:[1,2,3]}).elems,
+  lib.Menu.render({ one:1, two:2, three:{ foo:4, bar:5} }, lib).elem
+,
+{depth:Infinity}))
 
 // Cool this works, looks good!
 // So very cool!

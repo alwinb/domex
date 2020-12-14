@@ -1,7 +1,12 @@
 /* domexp module */ (() => {
 
-const { defineProperty:define } = Object
 const log = console.log.bind (console)
+const raw = (...args) => String.raw (...args)
+
+const define = (obj, arg2, arg3) => typeof arg2 === 'string'
+  ? Object.defineProperty (obj, arg2, arg3)
+  : Object.defineProperties (obj, arg2)
+
 
 // Dom Expression Language
 // =======================
@@ -9,21 +14,42 @@ const log = console.log.bind (console)
 // Parser
 // ------
 
-// Lexer/ states
+// ### Lexer/ states
 
-const atom = /([\n\t\f ]+)|([a-zA-Z][a-zA-Z0-9_\-]*|[(])/y
-const afterAtom = /([\n\t\f ]+)|([+|>)]|[*]|:=|(?:[#@.][a-zA-Z]|[$%?][a-zA-Z]?)[a-zA-Z0-9_\-]*)/y
+const regex = (...args) =>
+  new RegExp (String.raw (...args) .replace (/\s+/g, ''), 'y')
 
-// Operator table
+const skip = raw `
+  ( [\n\t\f\x20]+ 
+  | // [^\n]* (?:\n|$) )`
 
-const unary = Array.from ('*.#@$%?') .reduce ((a, x) => (a[x] = 1, a), {})
-const infix = { '>':1, '+':2, '|':1, ':=':0 }
+const post = regex `
+  ${ skip } | 
+  ( [a-zA-Z] [a-zA-Z0-9_\-]*
+  | [(] )`
 
-// Operator Precedence Parser
+const pre = regex `
+  ${ skip } | 
+  ( [+|>)]
+  | :=
+  | [{] [^}]* [}]
+  | [#@.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
+  | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+
+// ### Operator table
+
+const unary = Array.from ('*.#@$%?{') .reduce ((a, x) => (a[x] = 1, a), {})
+const infix = { ':=':0, '|':1, '>':2, '+':2, }
+
+// a > b + c > d  =  a > (b + (c > d))
+// a + b | c > d  =  (a + b) | (c > d)
+// TODO decide on the precedence of the postfix operators
+
+// ### Operator Precedence Parser
 
 function parse (string) {
   // lexer state
-  let state = atom
+  let state = post
   let lastIndex = 0, done = false
   state.lastIndex = 0
 
@@ -41,13 +67,12 @@ function parse (string) {
       lastIndex = state.lastIndex
       if (match[1] != null) continue // skip whitespace
       const token = match[2]
-      //log (token, lastIndex)
 
       if (token === '(') { // START tokens
         coterm.push (coterm = ['()'])
         ops = []
         context[context.length] = { coterm, ops }
-        state = atom
+        state = post
       }
 
       else if (token[0] in unary) {
@@ -55,21 +80,21 @@ function parse (string) {
         // however right now postfix bind strongest anyway
         const l = coterm.length-1
         coterm[l] = [token, coterm[l]]
-        state = afterAtom
+        state = pre
       }
 
-      else if (token in infix) { // INFIX tokens
-        for (let op, l = ops.length-1; l>=0 && infix[(op = ops[l])] >= infix[token]; l--) {
+      else if (token in infix) { // default to infix-right on same precedence
+        for (let op, l = ops.length-1; l>=0 && infix[(op = ops[l])] > infix[token]; l--) {
           const i = coterm.length-2
           coterm[i] = [ops.pop(), ...coterm.splice (i, 2, [])]
         }
         ops[ops.length] = token
-        state = atom
+        state = post
       }
 
       else if (token !== ')') { // LEAF tokens
         coterm[coterm.length] = token
-        state = afterAtom
+        state = pre
       }
     }
 
@@ -88,109 +113,132 @@ function parse (string) {
 
   if (lastIndex < string.length)
     throw new SyntaxError (`Invalid dom-expression "${string}"`)
-  //log (JSON.stringify (root, null, 0))
   return root
 }
 
 
-// Evaluator
-// =========
+// Analyser
+// --------
 
-// Dom
+const _typeof = input =>
+    input === null ? 'null'
+  : Array.isArray (input) ? 'array'
+  : typeof input
+
+const handlers = {
+  test: (name, input, _type) => 
+    _type === 'object' && 'type' in input ? name === input.type : name === _type,
+  iter: function* (ref) { for (let k in ref) yield [k, ref[k]] },
+}
+
+
+
+// Evaluator
+// ---------
+
+// ### Dom (sub-API)
 
 const createElement = 'document' in globalThis
   ? document.createElement.bind (document) :
   function createElement (tagName) {
     const elem = { tagName:String(tagName).toLowerCase(), class:[], childNodes:[] }
-    define (elem, 'append', { value: (...nodes) => elem.childNodes.splice (Infinity, 0, ...nodes) })
-    define (elem, 'lastChild', { get: () => elem.childNodes[elem.childNodes.length-1] })
-    define (elem, 'classList', { get: () => ({ add (item) { elem.class.push (item) } }) })
+    define (elem, {
+      append:    { value: (...nodes) => elem.childNodes.splice (Infinity, 0, ...nodes) },
+      lastChild: { get: () => elem.childNodes[elem.childNodes.length-1] },
+      classList: { get: () => ({ add (item) { elem.class.push (item) }}) },
+    })
     return elem
   }
 
-// Eval
+const modelSymbol = Symbol ('DomExp.model')
+const keySymbol = Symbol ('DomExp.key')
 
-function build (expr, input) {
+// ### Eval
+
+function lastElem (items) {
+  for (let i=items.length-1; i>=0; i--)
+    if ('tagName' in items[i]) return items[i]
+  return null
+}
+
+function build (expr, input, lib = {}) {
   const refs = Object.create (null)
   const ids = new WeakMap ()
-  let last
-  const elems = eval (expr, input, '') || []
+  const elems = eval (expr, input, '')
   return { elem:elems[0]||null, elems , refs }
 
   function eval (expr, input, key) {
     if (typeof expr === 'string') {
-      if (expr[0] <= 'Z') {
-        log ('domexp defs not yet implemented')
+      if (expr[0] <= 'Z') { // Reference
+        const ref = lib[expr]
+        if (ref == null || typeof ref !== 'object' || !(ref instanceof DomExp))
+          throw new Error ('DomExp: '+expr+' is not defined.')
+        return eval (lib[expr].ast, input, key)
       }
-      else last = createElement (expr)
-      return [last]
+      // tagname
+      const elem = createElement (expr)
+      elem[modelSymbol] = input
+      elem[keySymbol] = key
+      return [elem]
     }
 
-    // log (expr)
     const [op, _l, _r] = expr
-    if (op === ':=') null
+    if (op === ':=') return [] // TODO
 
     if (op === '#root') {
       return eval (_l, input, key)
     }
 
     if (op === '>') {
-      const [ls, l] = [eval (_l, input, key), last]
-      if (!ls) return null
-      const rs = eval (_r, input, key)
-      if (rs) {
-        l.append (...rs)
-        return ls
-      }
+      const ls = eval (_l, input, key)
+      const last = lastElem (ls)
+      if (last) last.append (...eval (_r, input, key))
+      return ls
     }
 
     if (op === '+') {
-      const [ls, l] = [eval (_l, input, key), last]
-      if (!ls) return eval (_r, input, key)
-      const rs = eval (_r, input, key)
-      if (!rs) return ls
-      return (ls.splice (Infinity, 0, ...rs), ls)
+      const ls = eval (_l, input, key)
+      ls.splice (Infinity, 0, ...eval (_r, input, key))
+      return ls
     }
 
     if (op === '|') {
-      return eval (_l, input, key) || eval (_r, input, key)
+      const ls = eval (_l, input, key)
+      return ls.length ? ls : eval (_r, input, key)
     }
 
     const c = op[0]
     if (c  === '?') {
-      const test = handlers.test (input, op.substr(1))
-      return test ? eval (_l, input, key) : null
+      const test = handlers.test (op.substr(1), input, _typeof (input))
+      return test ? eval (_l, input, key) : []
     }
 
     if (c  === '*') {
       let nodes = []
-      for (let [k, v] of handlers.iter (input)) {
-        const ls = eval (_l, v, k)
-        if (ls) nodes = nodes.concat (ls)
-      }
-      return nodes.length ? nodes : null
+      const value = op === c ? input : (input||{})[op.substr(1)]
+      for (let [k, v] of handlers.iter (value))
+        nodes = nodes.concat (eval (_l, v, k))
+      return nodes
     }
 
     const ls = eval (_l, input, key)
-    if (ls) {
+    const last = lastElem (ls)
+    if (last) {
       if (c  === '%') {
         const value = op === c ? input : input [op.substr(1)]
         last.append (value == null ? '' : String (value))
       }
-      if (c === '$') last.append (String (key))
-      if (c === '@') refs [op.substr (1)] = last
-      if (c === '.') last.classList.add (op.substr (1))
-      if (c === '#') last.id = op.substr (1)
+      /*  key  */ if (c === '$') last.append (String (key))
+      /* text  */ if (c === '{') last.append (String (op.substr (1, op.length -2)))
+      /*  ref  */ if (c === '@') refs [op.substr (1)] = last
+      /* class */ if (c === '.') last.classList.add (op.substr (1))
+      /*  id   */ if (c === '#') last.id = op.substr (1)
       return ls
     }
-    return null
+    return []
   }
 }
 
-const handlers = {
-  test: (input, name) => typeof input === name,
-  iter: function* (ref) { for (let k in ref) yield [k, ref[k]] },
-}
 
 function dom (string, input, decompose = handlers) {
   const { elems } = build (parse (string), input, decompose)
@@ -199,22 +247,23 @@ function dom (string, input, decompose = handlers) {
 }
 
 
-// Api
-// ---
+// DomExp API
+// ----------
 
 class DomExp {
   constructor (source) {
     this.source = source
     define (this, 'ast', { value: parse (source), enumerable:false })
   }
-  render (input) {
-    return build (this.ast, input)
+  render (input, lib) {
+    return build (this.ast, input, lib)
   }
 }
 
-DomExp.symbol = Symbol ('DomExp.symbol')
+DomExp.model = modelSymbol
+DomExp.key = keySymbol
 
-// Tagged templates
+// ### Tagged string literals
 
 function dom (...args) { 
   let domexp = new DomExp (String.raw (...args))
@@ -226,7 +275,6 @@ function dom (...args) {
 // -------
 
 const exports = { DomExp, dom, parse }
-log (exports)
 if (globalThis.window) {
   window.modules = window.modules || { }
   window.modules.domexp = exports

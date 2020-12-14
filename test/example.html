@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Emmet-like Dom Builder</title>
+  <title>Dom Expressions</title>
   <link rel="stylesheet" href="style/base.css">
   <link rel="stylesheet" href="style/main.css">
-  <!-- <script src="../dist/domexp.min.js"></script> -->
   <script src="../src/domexp.js"></script>
 </head>
 <body>
@@ -13,43 +12,72 @@
 <body>
 <h1>Dom Expression Language</h1>
 <script>
-
 const log = console.log.bind (console)
+const dobo = document.body
 const { DomExp, dom } = modules.domexp;
 
-log(
-  dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
-  dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem .outerHTML,
-)
+// log(
+//   dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
+//   dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem .outerHTML,
+// )
 
-// TODO so, $ & e.a. should be allowed as both an atom and a postfix operator
-// FIXME 'ul > (li  %)* #menu' parses incorrectly
-// const Menu = new DomExp ('ul > (li %)* #menu')
-// REVIEW the operator precedence, I think it is much better to have postfix % bind stronger than |. 
-
-const Menu = new DomExp ('ul > (li.n?number | li.s?string % > p %) *')
-log (Menu.ast)
 const domIndex = Symbol('domIndex')
-
-function Dom (domexp, data) {
-  const build = new DomExp (domexp) .render (data)
+function Dom (source, data) {
+  const build = new DomExp (source) .render (data)
   build.elem [domIndex] = build
   return build.elem
 }
 
-const menu = Menu .render (["foo",2,"bar",4]).elem
-log (menu)
-document.body.append (menu)
-
 const buttons = ['prev', 'now', 'next']
 let view = Dom ('div > button%*', buttons)
-log (view)
 
 view.addEventListener ('click', evt => {
   log ('click from', evt.currentTarget[domIndex], evt.target)
 })
 
 document.body.append (view)
+
+// Example - Recursive expressions
+// -------------------------------
+
+const Menu = new DomExp (`ul > (li > a $ + Menu?object)*`)
+
+const Json = new DomExp (`
+    span .number    ?number    %
+  | span .null      ?null      {null}
+  | span .undefined ?undefined {undefined}
+  | span .boolean   ?boolean   %
+  | span .string    ?string    %
+  | ul   .array     ?array     > (li > Json)*
+  | dl   .object    ?object    > span {object} + (di > dt $ + dd > Json)*
+  | span .function  ?function  {function } %name
+  //| span .unknown              %`)
+
+log (Json.ast)
+// Precedence from low to high:
+// |, <, +, 
+
+const lib = { Menu, Json }
+const sample = { one:1, two:2, three: {foo:4, bar:5}, ux:null, ar:[1,{x:2, y:false, z:null},3, undefined, dom] }
+
+// const menu = lib.Menu.render (sample, lib)
+// dobo.append (menu.elem)
+
+const json = lib.Json.render (sample, lib)
+dobo.append (json.elem)
+
+json.elem.addEventListener ('click', evt => {
+  // So now you have access to a number of related items,
+  // the target root element, the target element and for each of those,
+  // the model-key and the model. 
+  // That's already _very_ powerful.
+  // But it might be good to also access the refs from here. 
+  const root = evt.currentTarget
+  const elem = evt.target
+  const key = elem[DomExp.key]
+  const model = elem[DomExp.model]
+  log ({ root, elem, model, key })
+})
 
 </script>
 </body>
