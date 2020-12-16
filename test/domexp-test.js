@@ -6,7 +6,7 @@ const { DomExp, parse, dom } = require ('../src/domexp')
 // Test
 // ====
 
-var sample = 'a [foo = bar] | (c) + d'
+var sample = 'a[foo=%amp bar=%bee] | (c) + d'
 log('\n' + sample, '\n===========================')
 log(parse (sample))
 
