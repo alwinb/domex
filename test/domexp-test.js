@@ -6,9 +6,12 @@ const { DomExp, parse, dom } = require ('../src/domexp')
 // Test
 // ====
 
-// parse ('Foo := a+b|(c)+d')
+var sample = 'a [foo = bar] | (c) + d'
+log('\n' + sample, '\n===========================')
+log(parse (sample))
 
 
+/*
 const lib = {
   Menu: new DomExp (`ul > ((li > a $ %) + Menu?object)*`)
 }
@@ -22,6 +25,7 @@ util.inspect(
   lib.Menu.render({ one:1, two:2, three:{ foo:4, bar:5} }, lib).elem
 ,
 {depth:Infinity}))
+*/
 
 // Cool this works, looks good!
 // So very cool!
@@ -34,12 +38,7 @@ util.inspect(
 // reimplement the builder and implement the recursion
 // Add the evaluator -- bottom up type checker
 
-
 // How would a HOP work?
 // So.... let's see
 // Then, the result of an end token,
 // must somehow be fed back to the ops instead of to the leafs
-
-
-
-

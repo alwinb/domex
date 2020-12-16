@@ -15,31 +15,52 @@ const define = (obj, arg2, arg3) => typeof arg2 === 'string'
 // ------
 
 // ### Lexer/ states
+// 'pre'  -- before an item / after an infix op
+// 'post' -- after an item / before an infix op
 
 const regex = (...args) =>
   new RegExp (String.raw (...args) .replace (/\s+/g, ''), 'y')
 
 const skip = raw `
-  ( [\n\t\f\x20]+ 
-  | // [^\n]* (?:\n|$) )`
+    ( [\t\f\x20]+ | // [^\n]* )
+    | ( [\n] )`
 
-const post = regex `
-  ${ skip } | 
-  ( [a-zA-Z] [a-zA-Z0-9_\-]*
-  | [(] )`
+// Allright, there will be multiple lexers now,
+// depending on the context -- which gets selected by start tokens.
 
-const pre = regex `
-  ${ skip } | 
-  ( [+|>)]
-  | :=
-  | [{] [^}]* [}]
-  | [#@.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
-  | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+const InGroup = {
+  pre: regex `
+    ${ skip } | 
+    ( [a-zA-Z] [a-zA-Z0-9_\-]*
+    | [(] )`,
+
+  post: regex `
+    ${ skip } | 
+    ( [+|>)]
+    | :=
+    | [{] [^}]* [}]
+    | [\[]
+    | [#@.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
+    | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+}
+
+const InAttr = {
+  pre: regex `
+    ${ skip } | 
+    ([a-zA-Z]+)`,
+
+  post: regex `
+    ${ skip } | 
+    (=|])`,
+}
+
 
 // ### Operator table
 
 const unary = Array.from ('*.#@$%?{') .reduce ((a, x) => (a[x] = 1, a), {})
-const infix = { ':=':0, '|':1, '>':2, '+':2, }
+const starts = { '(':InGroup, '[':InAttr }
+const ends = { ')':1, ']':1 }
+const infix = { ':=':0, '|':1, '>':2, '+':2, '=':0 }
 
 // a > b + c > d  =  a > (b + (c > d))
 // a + b | c > d  =  (a + b) | (c > d)
@@ -48,31 +69,38 @@ const infix = { ':=':0, '|':1, '>':2, '+':2, }
 // ### Operator Precedence Parser
 
 function parse (string) {
-  // lexer state
-  let state = post
+  // position and newline counter
   let lastIndex = 0, done = false
-  state.lastIndex = 0
+  let line = 1, lastnl = 0
+
+  // current lexer and lexer state
+  let lexer = InGroup
+  let state = lexer.pre
 
   // parser state
   const root = ['#root']
   let coterm = root, ops = []
-  const context = [{ coterm, ops }]
+  const context = [{ coterm, ops, lexer }]
 
   do {
-    // log ('LOOP', JSON.stringify ({ coterm, ops }))
+    log ('LOOP', JSON.stringify ({ coterm, ops }))
     state.lastIndex = lastIndex
     const match = state.exec (string)
-
     if (match) {
+      log (JSON.stringify (match[0]))
       lastIndex = state.lastIndex
-      if (match[1] != null) continue // skip whitespace
-      const token = match[2]
 
-      if (token === '(') { // START tokens
-        coterm.push (coterm = ['()'])
+      // skip whitespace and count newlines
+      if (match[1] != null) continue
+      if (match[2] != null) { lastnl = lastIndex; continue }
+      const token = match[3]
+
+      if (token in starts) { // START tokens
+        coterm.push (coterm = [token])
         ops = []
-        context[context.length] = { coterm, ops }
-        state = post
+        context[context.length] = { coterm, ops, lexer }
+        lexer = starts[token]
+        state = lexer.pre
       }
 
       else if (token[0] in unary) {
@@ -80,7 +108,7 @@ function parse (string) {
         // however right now postfix bind strongest anyway
         const l = coterm.length-1
         coterm[l] = [token, coterm[l]]
-        state = pre
+        state = lexer.post
       }
 
       else if (token in infix) { // default to infix-right on same precedence
@@ -89,30 +117,33 @@ function parse (string) {
           coterm[i] = [ops.pop(), ...coterm.splice (i, 2, [])]
         }
         ops[ops.length] = token
-        state = post
+        state = lexer.pre
       }
 
-      else if (token !== ')') { // LEAF tokens
+      else if (!(token in ends)) { // LEAF tokens
         coterm[coterm.length] = token
-        state = pre
+        state = lexer.post
       }
     }
 
     // END tokens and EOF
-    if (!match || !lastIndex || (token = match[2] === ')')) {
+    if (!match || !lastIndex || ((token = match[3]) in ends)) {
+      log ('eof or end group', token)
       // TODO check balance!
       for (let l = ops.length-1; l>=0; l--) {
         const i = coterm.length-2
         coterm.splice (i, 2, [ops.pop(), coterm[i], coterm[i+1]])
       }
-      if (--context.length)
-        ({ coterm, ops } = context[context.length-1])
+      if (--context.length) {
+        ({ coterm, ops, lexer } = context[context.length-1])
+        state = lexer.post
+      }
     }
   }
   while (context.length)
 
   if (lastIndex < string.length)
-    throw new SyntaxError (`Invalid dom-expression "${string}"`)
+    throw new SyntaxError (`Invalid dom-expression. At ${line}:${lastIndex - lastnl} before ${string.substr(lastIndex, 10)}`)
   return root
 }
 
