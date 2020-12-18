@@ -1,31 +1,22 @@
-/* domexp module */ (() => {
 const log = console.log.bind (console)
 const raw = (...args) => String.raw (...args)
+const { Parser } = require ('./hoop-parser')
+const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX } = Parser
 
-const define = (obj, arg2, arg3) => typeof arg2 === 'string'
-  ? Object.defineProperty (obj, arg2, arg3)
-  : Object.defineProperties (obj, arg2)
+// Domex Parser
+// ============
 
-
-// Dom Expression Language
-// =======================
-
-// Parser
-// ------
-
-// ### Lexer/ states
+// Lexer
+// -----
 // 'pre'  -- before an item / after an infix op
 // 'post' -- after an item / before an infix op
 
 const regex = (...args) =>
-  new RegExp (String.raw (...args) .replace (/\s+/g, ''), 'y')
+  new RegExp (String.raw (...args) .replace (/\s+/g, ''), 'ys')
 
 const skip = raw `
     ( [\t\f\x20]+ | // [^\n]* )
     | ( [\n] )`
-
-// Allright, there will be multiple lexers now. 
-// Start tokens select a new lexer. 
 
 const InTree = {
   pre: regex `
@@ -42,10 +33,13 @@ const InTree = {
     | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
 }
 
+// TODO proper string escapes
 const InAttr = {
   pre: regex `
     ${ skip } | 
-    ([a-zA-Z]+)`, // | [$%] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+    ( [a-zA-Z]+
+    | ["] [^"]* ["]
+    )`, // | [$%] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
 
   // TODO emit implicit concat operator; use lookahead?
   // or hack it for now and implement =value as a postfix op?
@@ -55,103 +49,70 @@ const InAttr = {
     (=|])`,
 }
 
+// WIP add quoted strings
+// const InString = {
+//   pre: regex `\n | [^"\\]+ | \][nt]? | .{0}`,
+//   post: `(["] | .{0})` // END, string-concat
+// }
 
-// ### Operator table
 
-const unary = Array.from ('*.#@$%?{') .reduce ((a, x) => (a[x] = 1, a), {})
-const starts = { '(':InTree, '[':InAttr }
-const ends = { ')':true, ']':true }
-const infix = { '|':1, '>':2, '+':2, '=':0 }
+// Parser Config
+// -------------
 
-// a > b + c > d  =  a > (b + (c > d))
-// a + b | c > d  =  (a + b) | (c > d)
-// TODO decide on the precedence of the postfix operators
+const lexerFor = t => _optable[t[0]][1]
 
-// ### Operator Precedence Parser
-
-function parse (string) {
-  // position and newline counter
-  let lastIndex = 0, done = false
-  let line = 1, lastnl = 0
-
-  // current lexer and lexer state
-  let lexer = InTree
-  let state = lexer.pre
-
-  // parser state
-  const root = ['()']
-  let coterm = root, ops = []
-  const context = [{ coterm, ops, lexer }]
-
-  do {
-    log ('LOOP', JSON.stringify ({ coterm, ops }))
-    state.lastIndex = lastIndex
-    const match = state.exec (string)
-    if (match) {
-      log (JSON.stringify (match[0]))
-      lastIndex = state.lastIndex
-
-      // SKIP whitespace, comments, count newlines
-      if (match[1] != null) continue
-      if (match[2] != null) { lastnl = lastIndex; continue }
-      const token = match[3]
-
-      // START tokens
-      if (token in starts) {
-        coterm.push (coterm = [token])
-        ops = []
-        context[context.length] = { coterm, ops, lexer }
-        lexer = starts[token]
-        state = lexer.pre
-      }
-
-      // unary operators
-      else if (token[0] in unary) {
-        // can merge with infix..
-        // however right now postfix bind strongest anyway
-        const l = coterm.length-1
-        coterm[l] = [token, coterm[l]]
-        state = lexer.post
-      }
-
-      // INFIX tokens
-      else if (token in infix) { // default to infix-right on same precedence
-        for (let op, l = ops.length-1; l>=0 && infix[(op = ops[l])] > infix[token]; l--) {
-          const i = coterm.length-2
-          coterm[i] = [ops.pop(), ...coterm.splice (i, 2, [])]
-        }
-        ops[ops.length] = token
-        state = lexer.pre
-      }
-
-      // LEAF tokens
-      else if (!(token in ends)) {
-        coterm[coterm.length] = token
-        state = lexer.post
-      }
-    }
-
-    // END tokens and EOF
-    let token
-    if (!match || !lastIndex || ((token = match[3]) in ends)) {
-      // TODO check balance!
-      for (let l = ops.length-1; l>=0; l--) {
-        const i = coterm.length-2
-        coterm.splice (i, 2, [ops.pop(), coterm[i], coterm[i+1]])
-      }
-      if (--context.length) {
-        ({ coterm, ops, lexer } = context[context.length-1])
-        state = lexer.post
-      }
-    }
-  }
-  while (context.length)
-
-  if (lastIndex < string.length)
-    throw new SyntaxError (`Invalid dom-expression. \n\tAt ${line}:${lastIndex - lastnl} before \n\t${string.substr(lastIndex, 20)}\n`)
-  return root
+const tokenRole = (t, state) => {
+  if (typeof t !== 'string') return t[0] === '[]' ? POSTFIX : LEAF
+  let info = _optable[t[0]]
+  return info ? info[0] : LEAF
 }
 
+const precedes = (t1, t2) => { // Ugh
+  t1 = typeof t1 !== 'string' ? t1[0] : t1
+  t2 = typeof t2 !== 'string' ? t2[0] : t2
+  const [r1, p1] = _optable[t1]||_optable[t1[0]]
+  const [r2, p2] = _optable[t2]||_optable[t2[0]]
+  const r = p1 > p2 ? true
+    : p1 === p2 && r1 === POSTFIX ? true
+    : false
+  // log ('precedes', t1, t2, r)
+  return r
+}
+
+const evalGroup = (start, x, end, state) => [start + end, x]
+
+const _optable = {
+  '\t': [    SKIP   ],
+  '\n': [    SKIP   ],
+  '/': [    SKIP   ],
+  ' ': [    SKIP   ],
+
+  '(': [   START, InTree],
+  ')': [     END, InTree],
+  '[': [   START, InAttr],
+  ']': [     END, InAttr],
+  '[]': [ POSTFIX, 9],
+  '*': [ POSTFIX, 9],
+  '.': [ POSTFIX, 9],
+  '#': [ POSTFIX, 9],
+  '@': [ POSTFIX, 9],
+  '$': [ POSTFIX, 9],
+  '%': [ POSTFIX, 9],
+  '?': [ POSTFIX, 9],
+  '{': [ POSTFIX, 9],
+  '+': [   INFIX, 3],
+  '>': [   INFIX, 3],
+  '|': [   INFIX, 2],
+  '=': [   INFIX, 0],
+}
+
+function parse (input) {
+  const p = new Parser ('(', lexerFor, tokenRole, precedes, evalGroup, ')' )
+  return p.parse (input) [1]
+}
+
+// Evaluator
+// =========
 
 // Analyser
 // --------
@@ -168,26 +129,12 @@ const handlers = {
 }
 
 
-
 // Evaluator
 // ---------
 
-// ### Dom (sub-API)
-
-const createElement = 'document' in globalThis
-  ? document.createElement.bind (document) :
-  function createElement (tagName) {
-    const elem = { tagName:String(tagName).toLowerCase(), class:[], childNodes:[] }
-    define (elem, {
-      append:    { value: (...nodes) => elem.childNodes.splice (Infinity, 0, ...nodes) },
-      lastChild: { get: () => elem.childNodes[elem.childNodes.length-1] },
-      classList: { get: () => ({ add (item) { elem.class.push (item) }}) },
-    })
-    return elem
-  }
-
 const modelSymbol = Symbol ('DomExp.model')
 const keySymbol = Symbol ('DomExp.key')
+
 
 // ### Eval
 
@@ -197,13 +144,41 @@ function lastElem (items) {
   return null
 }
 
-function build (expr, input, lib = {}) {
+function build (expr, input, lib = {}, createElement, DomExp) {
   const refs = Object.create (null)
   const ids = new WeakMap ()
-  const elems = eval (expr, input, '')
-  return { elem:elems[0]||null, elems , refs }
+  try {
+    const elems = eval (expr, input, '')
+    return { elem:elems[0]||null, elems , refs }
+  }
+  catch (e) {
+    log (e, expr)
+    throw new Error ('DomExp: error')
+  }
 
+  function evalAtt (expr, input, key) {
+    if (typeof expr === 'string') {
+      return expr[0] === '"' ? expr.substr(1, expr.length-2) : [expr, '']
+    }
+    else {
+      const [op, _l, _r] = expr
+      const c = op[0]
+      // must be '=' for now, cause no other things are implemented yet
+      // ... Alright, I need to do this properly...
+      if (c === '=') {
+        const r =  [_l, evalAtt (_r, input, key)]
+        // log (r)
+        return r
+      }
+    }
+  }
+
+  // TODO I want to rewrite this into a loop
+  
   function eval (expr, input, key) {
+
+    // Atoms: tagname and Reference
+
     if (typeof expr === 'string') {
       if (expr[0] <= 'Z') { // Reference
         const ref = lib[expr]
@@ -211,7 +186,6 @@ function build (expr, input, lib = {}) {
           throw new Error ('DomExp: '+expr+' is not defined.')
         return eval (lib[expr].ast, input, key)
       }
-      // tagname
       const elem = createElement (expr)
       elem[modelSymbol] = input
       elem[keySymbol] = key
@@ -219,7 +193,7 @@ function build (expr, input, lib = {}) {
     }
 
     const [op, _l, _r] = expr
-    const c = op[0]
+    const c = Array.isArray(op) ? '[' : op[0]
 
     // Special Forms - (Non-algebraic evaluation)
 
@@ -252,9 +226,13 @@ function build (expr, input, lib = {}) {
       }
 
       else if (c === '.') last.classList.add (op.substr (1))
-      else if (c === '#') last.id = op.substr (1)
+      else if (c === '#') last.setAttribute ('id', op.substr (1))
       else if (c === '[') {
-        log ('TODO eval attribute', _l)
+        // log ('This is a HOOP?', op)
+        const attr = evalAtt (op[1])
+        // log ('evaluated attr', attr)
+        last.setAttribute (...attr)
+        // log ('evalAtt', attr, _l)
       }
 
       else if (c === '$') last.append (String (key))
@@ -272,46 +250,45 @@ function build (expr, input, lib = {}) {
 }
 
 
-function dom (string, input, decompose = handlers) {
-  const { elems } = build (parse (string), input, decompose)
-  if (elems.length > 1) throw new Error ('multiple root emmet-like expression')
-  return elems[0]
-}
-
-
 // DomExp API
 // ----------
 
-class DomExp {
-  constructor (source) {
-    this.source = source
-    define (this, 'ast', { value: parse (source), enumerable:false })
+const DomExpImpl = createElement => {
+
+  class DomExp {
+    constructor (source) {
+      this.source = source
+      Object.defineProperty (this, 'ast', { value: parse (source), enumerable:false })
+    }
+    render (input, lib) {
+      return build (this.ast, input, lib, createElement, DomExp)
+    }
   }
-  render (input, lib) {
-    return build (this.ast, input, lib)
+
+  DomExp.model = modelSymbol
+  DomExp.key = keySymbol
+
+  // ### Tagged string literals
+
+  const domex = (...args) => new DomExp (String.raw (...args))
+
+  function dom (...args) { 
+    const domexp = new DomExp (String.raw (...args))
+    return data => domexp .render (data)
   }
-}
 
-DomExp.model = modelSymbol
-DomExp.key = keySymbol
 
-// ### Tagged string literals
-
-function dom (...args) { 
-  let domexp = new DomExp (String.raw (...args))
-  return data => domexp .render (data)
+  return { DomExp, dom, domex, parse }
 }
 
 
 // Exports
 // -------
 
-const exports = { DomExp, dom, parse }
-if (globalThis.window) {
-  window.modules = window.modules || { }
-  window.modules.domexp = exports
-}
-else
-  module.exports = exports
+module.exports = { DomExpImpl, parse }
 
-/* end domexp module */ })()
+// var p = new Parser ('(', lexerFor, tokenRole, precedes, collapse, ')' )
+// // var tree = p.parse ('foo + bar + baz')
+// var tree = p.parse (`a + b | c
+// > d + d + e [s = foo]`) // fixme
+// log (JSON.stringify (tree))

@@ -1,18 +1,20 @@
 .PHONY: all clean run
 
 srcdir = src/
-files = domexp.js
+files = hoop-parser.js index.js dom.js browser.js domexp.js
 bundle-name = domexp
-bundle-entry = domexp.js
+bundle-entry = browser.js
 sources = $(addprefix $(srcdir), $(files))
 
 run: all
-	@ echo $(sources)
 
-all: dist/$(bundle-name).min.js
+all: dist/$(bundle-name).js dist/$(bundle-name).min.js
 
 dist/$(bundle-name).min.js: dist/ $(sources)
-	esbuild $(srcdir)/$(bundle-entry) --minify --outfile=dist/$(bundle-name).min.js
+	esbuild $(srcdir)$(bundle-entry) --minify --bundle --outfile=dist/$(bundle-name).min.js
+
+dist/$(bundle-name).js: dist/ $(sources)
+	esbuild $(srcdir)$(bundle-entry) --bundle --outfile=dist/$(bundle-name).js
 
 dist/:
 	mkdir dist/

@@ -1,0 +1,7 @@
+# TextMate configuration
+
+excludeInFolderSearch = "{node_modules,private}"
+excludeInFileChooser = "{node_modules,private}"
+
+[src/domexp.js]
+TM_RUN_TARGET = ../test/domexp-test.js
