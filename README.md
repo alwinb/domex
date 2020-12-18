@@ -48,21 +48,9 @@ dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem
 
 **Recursion**
 
-It is possible to construct recursive DOM expressions,
-this is very useful for building e.g. nested menus. 
+It is possible to construct recursive DOM expressions. 
+Currently you need to do a bit of extra work to set up a 'library' object of DOM expressions to make the recursive references work and pass that as a second argument to `render`.
 
-```javascript
-const menu = {
-  item1: 1,
-  item2: {
-  	sub1: 1,
-  	sub2: 2,
-  }
-  item3: 3,
-}
-
-dom `Menu: ul > (li > a $) + Menu*subs` (menu) .elem
-```
 **TODO**
 
 Grammar
