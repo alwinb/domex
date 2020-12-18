@@ -1,6 +1,6 @@
 const util = require ('util')
 const log = console.log.bind (console)
-const { DomExp, parse, dom, domex } = require ('../src/')
+const { DomEx, parse, dom, domex } = require ('../src/')
 
 
 // Test
@@ -52,13 +52,13 @@ log (lib.Main.render ({a:[1,2,3], b:false, c:{ foo:1, bar:2 }}, lib) .elem.outer
 //process.exit (205)
 /*
 const lib = {
-  Menu: new DomExp (`ul > ((li > a $ %) + Menu?object)*`)
+  Menu: new DomEx (`ul > ((li > a $ %) + Menu?object)*`)
 }
 
 log(
 util.inspect(
-  // new DomExp ('a.test#sx > a@A $ | b@b ') .render ('sample'),
-  // new DomExp ('ul> (li?string % | li?number %)* .foo') .render ([1,2,3]),
+  // new DomEx ('a.test#sx > a@A $ | b@b ') .render ('sample'),
+  // new DomEx ('ul> (li?string % | li?number %)* .foo') .render ([1,2,3]),
   // dom `(a.test#sx > a@A $)* | b@b` ([]),
   // dom `span*one` ({one:[1,2,3]}).elems,
   lib.Menu.render({ one:1, two:2, three:{ foo:4, bar:5} }, lib).elem
@@ -73,7 +73,7 @@ util.inspect(
 // And with the context-dependent operator tables
 // Could experiment with hops right here,
 
-// For domexp, ...
+// For domex, ...
 // reimplement the builder and implement the recursion
 // Add the evaluator -- bottom up type checker
 

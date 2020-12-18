@@ -124,7 +124,7 @@ API
 
 **TODO**
 
-- DomExp
+- DomEx
   - constructor (expressionString)
   - render (data)
 - RenderResult

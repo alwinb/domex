@@ -5,7 +5,7 @@
   <title>Dom Expressions</title>
   <link rel="stylesheet" href="style/base.css">
   <link rel="stylesheet" href="style/main.css">
-  <script src="../dist/domexp.js"></script>
+  <script src="../dist/domex.js"></script>
 </head>
 <body>
 </head>
@@ -14,7 +14,7 @@
 <script>
 const log = console.log.bind (console)
 const dobo = document.body
-const { DomExp, dom } = modules.domexp;
+const { DomEx, dom } = modules.domex;
 
 // log(
 //   dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
@@ -23,7 +23,7 @@ const { DomExp, dom } = modules.domexp;
 
 const domIndex = Symbol('domIndex')
 function Dom (source, data) {
-  const build = new DomExp (source) .render (data)
+  const build = new DomEx (source) .render (data)
   build.elem [domIndex] = build
   return build.elem
 }
@@ -40,9 +40,9 @@ document.body.append (view)
 // Example - Recursive expressions
 // -------------------------------
 
-const Menu = new DomExp (`ul > (li > a $ + Menu?object)*`)
+const Menu = new DomEx (`ul > (li > a $ + Menu?object)*`)
 
-const Json = new DomExp (`
+const Json = new DomEx (`
     span .number    ?number    %
   | span .null      ?null      {null}
   | span .undefined ?undefined {undefined}
@@ -74,8 +74,8 @@ json.elem.addEventListener ('click', evt => {
   // But it might be good to also access the refs from here. 
   const root = evt.currentTarget
   const elem = evt.target
-  const key = elem[DomExp.key]
-  const model = elem[DomExp.model]
+  const key = elem[DomEx.key]
+  const model = elem[DomEx.model]
   log ({ root, elem, model, key })
 })
 

@@ -132,8 +132,8 @@ const handlers = {
 // Evaluator
 // ---------
 
-const modelSymbol = Symbol ('DomExp.model')
-const keySymbol = Symbol ('DomExp.key')
+const modelSymbol = Symbol ('DomEx.model')
+const keySymbol = Symbol ('DomEx.key')
 
 
 // ### Eval
@@ -144,7 +144,7 @@ function lastElem (items) {
   return null
 }
 
-function build (expr, input, lib = {}, createElement, DomExp) {
+function build (expr, input, lib = {}, createElement, DomEx) {
   const refs = Object.create (null)
   const ids = new WeakMap ()
   try {
@@ -153,7 +153,7 @@ function build (expr, input, lib = {}, createElement, DomExp) {
   }
   catch (e) {
     log (e, expr)
-    throw new Error ('DomExp: error')
+    throw new Error ('DomEx: error')
   }
 
   function evalAtt (expr, input, key) {
@@ -182,8 +182,8 @@ function build (expr, input, lib = {}, createElement, DomExp) {
     if (typeof expr === 'string') {
       if (expr[0] <= 'Z') { // Reference
         const ref = lib[expr]
-        if (ref == null || typeof ref !== 'object' || !(ref instanceof DomExp))
-          throw new Error ('DomExp: '+expr+' is not defined.')
+        if (ref == null || typeof ref !== 'object' || !(ref instanceof DomEx))
+          throw new Error ('DomEx: '+expr+' is not defined.')
         return eval (lib[expr].ast, input, key)
       }
       const elem = createElement (expr)
@@ -250,42 +250,42 @@ function build (expr, input, lib = {}, createElement, DomExp) {
 }
 
 
-// DomExp API
+// DomEx API
 // ----------
 
-const DomExpImpl = createElement => {
+const DomExImpl = createElement => {
 
-  class DomExp {
+  class DomEx {
     constructor (source) {
       this.source = source
       Object.defineProperty (this, 'ast', { value: parse (source), enumerable:false })
     }
     render (input, lib) {
-      return build (this.ast, input, lib, createElement, DomExp)
+      return build (this.ast, input, lib, createElement, DomEx)
     }
   }
 
-  DomExp.model = modelSymbol
-  DomExp.key = keySymbol
+  DomEx.model = modelSymbol
+  DomEx.key = keySymbol
 
   // ### Tagged string literals
 
-  const domex = (...args) => new DomExp (String.raw (...args))
+  const domex = (...args) => new DomEx (String.raw (...args))
 
   function dom (...args) { 
-    const domexp = new DomExp (String.raw (...args))
+    const domexp = new DomEx (String.raw (...args))
     return data => domexp .render (data)
   }
 
 
-  return { DomExp, dom, domex, parse }
+  return { DomEx, dom, domex, parse }
 }
 
 
 // Exports
 // -------
 
-module.exports = { DomExpImpl, parse }
+module.exports = { DomExImpl, parse }
 
 // var p = new Parser ('(', lexerFor, tokenRole, precedes, collapse, ')' )
 // // var tree = p.parse ('foo + bar + baz')

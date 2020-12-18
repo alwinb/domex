@@ -1,8 +1,8 @@
 .PHONY: all clean run
 
 srcdir = src/
-files = hoop-parser.js index.js dom.js browser.js domexp.js
-bundle-name = domexp
+files = hoop-parser.js index.js dom.js browser.js domex.js
+bundle-name = domex
 bundle-entry = browser.js
 sources = $(addprefix $(srcdir), $(files))
 
