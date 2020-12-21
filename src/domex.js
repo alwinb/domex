@@ -30,7 +30,7 @@ const InTree = {
     | [{] [^}]* [}]
     | [\[]
     | [#@.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
-    | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+    | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )` // TODO grammar change
 }
 
 // TODO proper string escapes
@@ -39,7 +39,7 @@ const InAttr = {
     ${ skip } | 
     ( [a-zA-Z]+
     | ["] [^"]* ["]
-    )`, // | [$%] [a-zA-Z]? [a-zA-Z0-9_\-]* )`
+    | [$%] [a-zA-Z]? [a-zA-Z0-9_\-]*)`, 
 
   // TODO emit implicit concat operator; use lookahead?
   // or hack it for now and implement =value as a postfix op?
@@ -61,17 +61,25 @@ const InAttr = {
 
 const lexerFor = t => _optable[t[0]][1]
 
-const tokenRole = (t, state) => {
-  if (typeof t !== 'string') return t[0] === '[]' ? POSTFIX : LEAF
-  let info = _optable[t[0]]
-  return info ? info[0] : LEAF
+const tokenInfo = (t, { lexer, state }) => {
+  // if (typeof t !== 'string') return t[0] === '[]' ? POSTFIX : LEAF
+  // NB just happens to 'magically' work for '[]' hoop
+  if (lexer === InTree) {
+    return _optable [t[0]] || [LEAF]
+  }
+  if (lexer === InAttr) {
+    return _optable2 [t[0]] || [LEAF]
+  }
 }
 
-const precedes = (t1, t2) => { // Ugh
+const precedes = (t1, t2, { lexer }) => { // Ugh
+  const optable = lexer === InTree ? _optable : _optable2
+
   t1 = typeof t1 !== 'string' ? t1[0] : t1
   t2 = typeof t2 !== 'string' ? t2[0] : t2
-  const [r1, p1] = _optable[t1]||_optable[t1[0]]
-  const [r2, p2] = _optable[t2]||_optable[t2[0]]
+  // log ('precedes', t1, t2)
+  const [r1, p1] = optable[t1]||optable[t1[0]]
+  const [r2, p2] = optable[t2]||optable[t2[0]]
   const r = p1 > p2 ? true
     : p1 === p2 && r1 === POSTFIX ? true
     : false
@@ -82,16 +90,16 @@ const precedes = (t1, t2) => { // Ugh
 const evalGroup = (start, x, end, state) => [start + end, x]
 
 const _optable = {
-  '\t': [    SKIP   ],
-  '\n': [    SKIP   ],
-  '/': [    SKIP   ],
-  ' ': [    SKIP   ],
+  '\t': [ SKIP ],
+  '\n': [ SKIP ],
+  '/':  [ SKIP ],
+  ' ':  [ SKIP ],
 
-  '(': [   START, InTree],
-  ')': [     END, InTree],
-  '[': [   START, InAttr],
-  ']': [     END, InAttr],
+  '(':  [ START, InTree ],
+  ')':  [ END ],
+  '[':  [ START, InAttr ],
   '[]': [ POSTFIX, 9],
+
   '*': [ POSTFIX, 9],
   '.': [ POSTFIX, 9],
   '#': [ POSTFIX, 9],
@@ -103,11 +111,19 @@ const _optable = {
   '+': [   INFIX, 3],
   '>': [   INFIX, 3],
   '|': [   INFIX, 2],
-  '=': [   INFIX, 0],
+}
+
+const _optable2 = {
+  '\t': [ SKIP ],
+  '\n': [ SKIP ],
+  '/':  [ SKIP ],
+  ' ':  [ SKIP ],
+  ']':  [ END ],
+  '=':  [ INFIX, 0 ],
 }
 
 function parse (input) {
-  const p = new Parser ('(', lexerFor, tokenRole, precedes, evalGroup, ')' )
+  const p = new Parser ('(', lexerFor, tokenInfo, precedes, evalGroup, ')' )
   return p.parse (input) [1]
 }
 
@@ -157,17 +173,24 @@ function build (expr, input, lib = {}, createElement, DomEx) {
   }
 
   function evalAtt (expr, input, key) {
+    // log ('evalAtt', input, key)
     if (typeof expr === 'string') {
-      return expr[0] === '"' ? expr.substr(1, expr.length-2) : [expr, '']
+      const c = expr[0]
+      if (c === '$') return key
+      if (c  === '%') return expr === c ? input : input [expr.substr (1)]
+      if (c === '"') return expr.substr (1, expr.length-2)
+      else return [expr, '']
     }
-    else {
+
+    const [op, _l, _r] = expr
+    const c = op[0]
+    if (c === '=') {
       const [op, _l, _r] = expr
       const c = op[0]
       // must be '=' for now, cause no other things are implemented yet
       // ... Alright, I need to do this properly...
       if (c === '=') {
         const r =  [_l, evalAtt (_r, input, key)]
-        // log (r)
         return r
       }
     }
@@ -228,11 +251,8 @@ function build (expr, input, lib = {}, createElement, DomEx) {
       else if (c === '.') last.classList.add (op.substr (1))
       else if (c === '#') last.setAttribute ('id', op.substr (1))
       else if (c === '[') {
-        // log ('This is a HOOP?', op)
-        const attr = evalAtt (op[1])
-        // log ('evaluated attr', attr)
+        const attr = evalAtt (op[1], input, key)
         last.setAttribute (...attr)
-        // log ('evalAtt', attr, _l)
       }
 
       else if (c === '$') last.append (String (key))
@@ -287,7 +307,7 @@ const DomExImpl = createElement => {
 
 module.exports = { DomExImpl, parse }
 
-// var p = new Parser ('(', lexerFor, tokenRole, precedes, collapse, ')' )
+// var p = new Parser ('(', lexerFor, tokenInfo, precedes, collapse, ')' )
 // // var tree = p.parse ('foo + bar + baz')
 // var tree = p.parse (`a + b | c
 // > d + d + e [s = foo]`) // fixme

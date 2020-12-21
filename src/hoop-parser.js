@@ -1,5 +1,5 @@
 const log = console.log.bind (console)
-const Symbols = new Proxy ({}, { get:(_,k) => Symbol (k) })
+const SymbolsOnto = map => new Proxy ({}, { get:($,k) => (map [k] = Symbol(k), map [k]) })
 
 // Generic Higher Order Operator Precedence Parser 
 // ===============================================
@@ -11,7 +11,7 @@ const Symbols = new Proxy ({}, { get:(_,k) => Symbol (k) })
 
 const {
   PRE, POST, ERR_PRE, ERR_POST, // Before value, after value, error in 
-  START, END, SKIP, LEAF, PREFIX, POSTFIX, INFIX } = Symbols // Token Roles
+  START, END, SKIP, LEAF, PREFIX, POSTFIX, INFIX } = SymbolsOnto (Parser)
 
 // const verify = (state, role) =>
 //   role === SKIP ? state :
@@ -30,7 +30,7 @@ const {
 // E0        - a 'file-end' token - must have role END
 // lexerFor  - a function that maps a START-token to a lexer
 // lexer     - an object { pre, post }, both of which regexes
-// tokenRole - a function that maps a token to a role as above
+// tokenInfo - a function that maps a token to an array [ role, ...] as above
 // precedes  - a function (t1, t2) that returns true if t1 has higher precedence than t2,
 //           -- or equal precedence and is left-associative.
 // collapse  - a function that 'collapses' a nested term into a (compound-) token.
@@ -38,15 +38,16 @@ const {
 
 // ### Parser
 
-function Parser (S0, lexerFor, tokenRole, precedes, group, E0) { 
+function Parser (S0, lexerFor, tokenInfo, precedes, group, E0) { 
   const context = []    // stack of shunting yards
   let state     = PRE   // current lexer-state
   let token     = S0    // current input token (or node)
-  let role      = START // tokenTole (token)
+  let info              // tokenTole (token, { lexer, state })
   let position  = 0     // current input position
   let line      = 1     // current input line
   let lastnl    = 0     // position of last newline
-  let opener, ops, builds, lexer // ref-cache into the current shunting yard
+  let opener, ops, builds // ref-cache into the current shunting yard
+  let lexer     = lexerFor (S0) // likewise // this is a bit hacky, REVIEW
 
   this.parse = parse
   return this
@@ -81,24 +82,29 @@ function Parser (S0, lexerFor, tokenRole, precedes, group, E0) {
   
     // ### Parser
 
-    role = tokenRole (token, state)
+    info = tokenInfo (token, { lexer, state })
+    const role = info [0]
+    // log ([token])
 
     // Operator - Apply operators of higher precedence
     let l = (role === LEAF || role === START || role === SKIP) ? -1 : ops.length-1
     for (; l >= 0; l--) {
-      const op = ops[l]
-      const cmp = role === END || precedes (op, token)
+      const { token:op, arity } = ops[l]
+      const cmp = role === END || precedes (op, token, { lexer })
+      // log (cmp)
       if (!cmp) break
-      const arity = tokenRole (op, state) === INFIX ? 2 : 1
+      // log ('apply', op, role, arity)
+      ops.pop ()
       const i = builds.length - arity
-      builds[i] = [ops.pop(), ...builds.splice (i, arity)]
+      builds[i] = [op, ...builds.splice (i, arity)]
     }
 
     // END - Collapses the shunting yard into a 'token'
     if (role === END) {
       context.pop ()
+      // log ('END', builds)
       token = group (opener, builds[0], token);
-      role = tokenRole (token, state)
+      info = tokenInfo (token, state)
       if (!context.length) return token;
       ({ opener, ops, builds, lexer } = context [context.length-1])
       continue
@@ -106,7 +112,7 @@ function Parser (S0, lexerFor, tokenRole, precedes, group, E0) {
 
     // START - Create a new shunting yard
     // TODO this should store the state? to prevent 
-    // tokenRole from returning something invalid?
+    // tokenInfo from returning something invalid?
     else if (role === START) { 
       opener = token
       ops    = []
@@ -128,7 +134,7 @@ function Parser (S0, lexerFor, tokenRole, precedes, group, E0) {
     }
 
     else if (role === PREFIX || role === INFIX) { // Err if state is pre
-      ops[ops.length] = token
+      ops[ops.length] = { token, role, arity:role === INFIX ? 2 : 1 }
       state = PRE
     }
 
@@ -137,8 +143,6 @@ function Parser (S0, lexerFor, tokenRole, precedes, group, E0) {
   } while (1) }
 
 }
-
-Object.assign (Parser, { START, END, SKIP, LEAF, PREFIX, POSTFIX, INFIX })
 
 
 // Exports
