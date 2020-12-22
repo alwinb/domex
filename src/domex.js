@@ -1,6 +1,7 @@
 const log = console.log.bind (console)
 const raw = (...args) => String.raw (...args)
 const { Parser } = require ('./hoop-parser')
+const { assign, setPrototypeOf:setProto } = Object
 const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX } = Parser
 
 // Domex Parser
@@ -29,7 +30,7 @@ const InTree = {
     ( [+|>)]
     | [{] [^}]* [}]
     | [\[]
-    | [#@.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
+    | [#@\\.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
     | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )` // TODO grammar change
 }
 
@@ -101,6 +102,7 @@ const _optable = {
   '[]': [ POSTFIX, 9],
 
   '*': [ POSTFIX, 9],
+  '\\': [ POSTFIX, 9],
   '.': [ POSTFIX, 9],
   '#': [ POSTFIX, 9],
   '@': [ POSTFIX, 9],
@@ -130,8 +132,7 @@ function parse (input) {
 // Evaluator
 // =========
 
-// Analyser
-// --------
+// ### Default Analyser
 
 const _typeof = input =>
     input === null ? 'null'
@@ -139,6 +140,7 @@ const _typeof = input =>
   : typeof input
 
 const handlers = {
+  get: (name, input) => input && typeof input === 'object' ? input [name] : null,
   test: (name, input, _type) => 
     _type === 'object' && 'type' in input ? name === input.type : name === _type,
   iter: function* (ref) { for (let k in ref) yield [k, ref[k]] },
@@ -148,6 +150,7 @@ const handlers = {
 // Evaluator
 // ---------
 
+const componentSymbol = Symbol ('DomEx.component')
 const modelSymbol = Symbol ('DomEx.model')
 const keySymbol = Symbol ('DomEx.key')
 
@@ -160,17 +163,15 @@ function lastElem (items) {
   return null
 }
 
-function build (expr, input, lib = {}, createElement, DomEx) {
+const Builder = (createElement, DomEx) =>
+function build (expr, input, key, lib) {
+
   const refs = Object.create (null)
   const ids = new WeakMap ()
-  try {
-    const elems = eval (expr, input, '')
-    return { elem:elems[0]||null, elems , refs }
-  }
-  catch (e) {
-    log (e, expr)
-    throw new Error ('DomEx: error')
-  }
+  const elems = eval (expr, input, key, refs)
+  const elem = elems[0]||null
+  return { elem, elems, refs }
+  /* where */
 
   function evalAtt (expr, input, key) {
     // log ('evalAtt', input, key)
@@ -198,17 +199,23 @@ function build (expr, input, lib = {}, createElement, DomEx) {
 
   // TODO I want to rewrite this into a loop
   
-  function eval (expr, input, key) {
+  function eval (expr, input, key, refs) {
 
     // Atoms: tagname and Reference
 
     if (typeof expr === 'string') {
-      if (expr[0] <= 'Z') { // Reference
+
+      // Reference
+      if (expr[0] <= 'Z') {
         const ref = lib[expr]
         if (ref == null || typeof ref !== 'object' || !(ref instanceof DomEx))
           throw new Error ('DomEx: '+expr+' is not defined.')
-        return eval (lib[expr].ast, input, key)
+        const subcomponent = ref.render (input, lib, key)
+        // const subcomponent = build (lib[expr].ast, input, key, lib)
+        return subcomponent.elems
       }
+
+      // Single element
       const elem = createElement (expr)
       elem[modelSymbol] = input
       elem[keySymbol] = key
@@ -222,29 +229,35 @@ function build (expr, input, lib = {}, createElement, DomEx) {
 
     if (c  === '?') {
       const test = handlers.test (op.substr(1), input, _typeof (input))
-      return test ? eval (_l, input, key) : []
+      return test ? eval (_l, input, key, refs) : []
+    }
+
+    if (c  === '\\') { // hacked in for a moment, need other syntax
+      let k = op.substr(1)
+      const v = handlers.get (k, input)
+      return eval (_l, v, k, refs)
     }
 
     if (c  === '*') {
       let nodes = []
-      const value = op === c ? input : (input||{})[op.substr(1)]
+      const value = op === c ? input : handlers.get (op.substr(1), input)
       for (let [k, v] of handlers.iter (value))
-        nodes = nodes.concat (eval (_l, v, k))
+        nodes = nodes.concat (eval (_l, v, k, refs))
       return nodes
     }
 
     // Algebraic
     
     let last
-    const ls = eval (_l, input, key)
+    const ls = eval (_l, input, key, refs)
     if (c === '(') return ls
-    if (c === '+') return ls.concat (eval (_r, input, key))
-    if (c === '|') return ls.length ? ls : eval (_r, input, key)
+    if (c === '+') return ls.concat (eval (_r, input, key, refs))
+    if (c === '|') return ls.length ? ls : eval (_r, input, key, refs)
 
     if ((last = lastElem (ls))) {
 
       if (c === '>') {
-        last.append (...eval (_r, input, key))
+        last.append (...eval (_r, input, key, refs))
         return ls
       }
 
@@ -259,7 +272,7 @@ function build (expr, input, lib = {}, createElement, DomEx) {
       else if (c === '{') last.append (String (op.substr (1, op.length -2)))
       else if (c === '@') refs [op.substr (1)] = last
       else if (c  === '%') {
-        const value = op === c ? input : input [op.substr(1)]
+        const value = op === c ? input : handlers.get (op.substr(1), input)
         last.append (value == null ? '' : String (value))
       }
       return ls
@@ -280,11 +293,43 @@ const DomExImpl = createElement => {
       this.source = source
       Object.defineProperty (this, 'ast', { value: parse (source), enumerable:false })
     }
-    render (input, lib) {
-      return build (this.ast, input, lib, createElement, DomEx)
+
+    render (input, lib, key = '') {
+      // private component state
+      let elem, elems, refs, model, state = 'init' // init|rendered for now
+
+      const component = {
+        get elem ()  { return elems[0] || null },
+        get elems () { return elems || (elems = []) },
+        get refs () { return refs },
+        get value () { return model },
+        set value (input) { this.render (input) }
+      }
+
+      function render (input, k = key) {
+        if (this.prepareData) input = this.prepareData (input, k)
+        if (state === 'init' || !this.shouldUpdate || this.shouldUpdate (input, model)) {
+          const elems0 = elems;
+          ({ elem, elems, refs } = build (this.ast, input, k, lib));
+          for (let x of elems) x[componentSymbol] = this // Hacking it for now
+          if (elems0 && elems0.length) {
+            elems0[0].before (...elems)
+            for (let x of elems0) x.remove ()
+          }
+          state = 'rendered'
+          model = input
+          if (this.didRender) this.didRender ()
+        }
+        return this
+      }
+      
+      const proto = setProto ({ render }, this)
+      return setProto (component, proto) .render (input, lib, key)
     }
   }
 
+  const build = Builder (createElement, DomEx)
+  DomEx.component = componentSymbol
   DomEx.model = modelSymbol
   DomEx.key = keySymbol
 

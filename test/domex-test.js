@@ -47,7 +47,7 @@ const lib = {
 
 //log (JSON.stringify (lib.Main.ast,0,2))
 log (JSON.stringify (lib.Main.ast))
-log (lib.Main.render ([1,2,3], {a:[1,2,3], b:false, c:{ foo:1, bar:2 }}, lib) .elem.outerHTML)
+log (lib.Main.render ([1,2,3], {a:[1,2,3], b:false, c:{ foo:1, bar:2 }}, lib) .elem)
 
 //process.exit (205)
 /*
