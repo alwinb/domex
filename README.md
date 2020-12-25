@@ -65,11 +65,11 @@ tag-name     |     Ident
 
 _E_ `|` _E_     |     _E_ `>` _E_     |     _E_ `+` _E_  
 
-_E_ `*`     |     _E_ `*`prop     |     _E_ `?`test  
+_E_ `*`     |     _E_ `*`prop     |     _E_ `~`prop     |     _E_ `?`test  
 
 `(` _E_ `)`  
 
-_E_ `.`class     |     _E_ `#`id     |     _E_ `@`ref  
+_E_ `[`attr`=`prop`]`     |     _E_ `.`class     |     _E_ `#`id     |     _E_ `&`ref  
 
 _E_ `{`text`}` |     _E_ `$`     |     _E_ `%`     |     _E_ `%`prop  
 </center>

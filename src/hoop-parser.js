@@ -29,7 +29,7 @@ const {
 // S0        - a 'file-start' token - must have role START
 // E0        - a 'file-end' token - must have role END
 // lexerFor  - a function that maps a START-token to a lexer
-// lexer     - an object { pre, post }, both of which regexes
+// lexer     - an object { Before, After }, both of which regexes
 // tokenInfo - a function that maps a token to an array [ role, ...] as above
 // precedes  - a function (t1, t2) that returns true if t1 has higher precedence than t2,
 //           -- or equal precedence and is left-associative.
@@ -59,7 +59,7 @@ function Parser (S0, lexerFor, tokenInfo, precedes, group, E0) {
     // ### Lexer
 
     if (token == null) {
-      const regex = state === PRE ? lexer.pre : lexer.post
+      const regex = state === PRE ? lexer.Before : lexer.After
       regex.lastIndex = position
       const match = regex.exec (input)
 
@@ -122,18 +122,18 @@ function Parser (S0, lexerFor, tokenInfo, precedes, group, E0) {
       state = PRE
     }
 
-    else if (role === LEAF) { // TODO Err if state is post
+    else if (role === LEAF) { // TODO Err if state is After
       builds.push (token)
       state = POST
     }
 
-    else if (role === POSTFIX) { // TODO Err if state is pre
+    else if (role === POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
       builds[i] = [token, builds[i]]
       state = POST
     }
 
-    else if (role === PREFIX || role === INFIX) { // Err if state is pre
+    else if (role === PREFIX || role === INFIX) { // Err if state is Before
       ops[ops.length] = { token, role, arity:role === INFIX ? 2 : 1 }
       state = PRE
     }

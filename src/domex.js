@@ -9,8 +9,8 @@ const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX } = Parser
 
 // Lexer
 // -----
-// 'pre'  -- before an item / after an infix op
-// 'post' -- after an item / before an infix op
+// 'Before' -- before an item / after an infix op
+// 'After'  -- after an item / before an infix op
 
 const regex = (...args) =>
   new RegExp (String.raw (...args) .replace (/\s+/g, ''), 'ys')
@@ -20,23 +20,23 @@ const skip = raw `
     | ( [\n] )`
 
 const InTree = {
-  pre: regex `
+  Before: regex `
     ${ skip } | 
     ( [a-zA-Z] [a-zA-Z0-9_\-]*
     | [(] )`,
 
-  post: regex `
+  After: regex `
     ${ skip } | 
-    ( [+|>)]
-    | [{] [^}]* [}]
+    ( [+;|>)]
+    | ["] [^"]* ["]
     | [\[]
-    | [#@\\.]  [a-zA-Z]  [a-zA-Z0-9_\-]*
-    | [$%?*] [a-zA-Z]? [a-zA-Z0-9_\-]* )` // TODO grammar change
+    | [#@.] [a-zA-Z]  [a-zA-Z0-9_\-]*
+    | [$%?*~] [a-zA-Z]? [a-zA-Z0-9_\-]* )` // FIXME start with alpha always
 }
 
 // TODO proper string escapes
 const InAttr = {
-  pre: regex `
+  Before: regex `
     ${ skip } | 
     ( [a-zA-Z]+
     | ["] [^"]* ["]
@@ -45,15 +45,15 @@ const InAttr = {
   // TODO emit implicit concat operator; use lookahead?
   // or hack it for now and implement =value as a postfix op?
   // (or the other way around, foo= as a prefix op)
-  post: regex `
+  After: regex `
     ${ skip } | 
     (=|])`,
 }
 
 // WIP add quoted strings
 // const InString = {
-//   pre: regex `\n | [^"\\]+ | \][nt]? | .{0}`,
-//   post: `(["] | .{0})` // END, string-concat
+//   Before: regex `\n | [^"\\]+ | \][nt]? | .{0}`,
+//   After: `(["] | .{0})` // END, string-concat
 // }
 
 
@@ -69,12 +69,12 @@ const tokenInfo = (t, { lexer, state }) => {
     return _optable [t[0]] || [LEAF]
   }
   if (lexer === InAttr) {
-    return _optable2 [t[0]] || [LEAF]
+    return _attrOps [t[0]] || [LEAF]
   }
 }
 
 const precedes = (t1, t2, { lexer }) => { // Ugh
-  const optable = lexer === InTree ? _optable : _optable2
+  const optable = lexer === InTree ? _optable : _attrOps
 
   t1 = typeof t1 !== 'string' ? t1[0] : t1
   t2 = typeof t2 !== 'string' ? t2[0] : t2
@@ -102,20 +102,21 @@ const _optable = {
   '[]': [ POSTFIX, 9],
 
   '*': [ POSTFIX, 9],
-  '\\': [ POSTFIX, 9],
+  '~': [ POSTFIX, 9],
   '.': [ POSTFIX, 9],
   '#': [ POSTFIX, 9],
   '@': [ POSTFIX, 9],
   '$': [ POSTFIX, 9],
   '%': [ POSTFIX, 9],
   '?': [ POSTFIX, 9],
-  '{': [ POSTFIX, 9],
+  '"': [ POSTFIX, 9],
+  ';': [   INFIX, 10],
   '+': [   INFIX, 3],
   '>': [   INFIX, 3],
   '|': [   INFIX, 2],
 }
 
-const _optable2 = {
+const _attrOps = {
   '\t': [ SKIP ],
   '\n': [ SKIP ],
   '/':  [ SKIP ],
@@ -152,8 +153,8 @@ const handlers = {
 
 const componentSymbol = Symbol ('DomEx.component')
 const modelSymbol = Symbol ('DomEx.model')
+const scopeSymbol = Symbol ('DomEx.scope')
 const keySymbol = Symbol ('DomEx.key')
-
 
 // ### Eval
 
@@ -167,10 +168,12 @@ const Builder = (createElement, DomEx) =>
 function build (expr, input, key, lib) {
 
   const refs = Object.create (null)
-  const ids = new WeakMap ()
-  const elems = eval (expr, input, key, refs)
-  const elem = elems[0]||null
-  return { elem, elems, refs }
+  const subs = Object.create (null)
+  // const ids = new WeakMap ()
+  const scope = { input, key, subs }
+  scope.elems = eval (expr, scope)
+  scope.elem = scope.elems[0]||null
+  return scope
   /* where */
 
   function evalAtt (expr, input, key) {
@@ -198,8 +201,9 @@ function build (expr, input, key, lib) {
   }
 
   // TODO I want to rewrite this into a loop
-  
-  function eval (expr, input, key, refs) {
+  // opts -- options -- 
+  function eval (expr, scope, opts = {}) {
+    const { input, key, subs } = scope
 
     // Atoms: tagname and Reference
 
@@ -212,13 +216,14 @@ function build (expr, input, key, lib) {
           throw new Error ('DomEx: '+expr+' is not defined.')
         const subcomponent = ref.render (input, lib, key)
         // const subcomponent = build (lib[expr].ast, input, key, lib)
+        // merge subs // man I'm making a MESS
+        for (let k in subcomponent.subs)
+          subs[k] = subs[k] ? subs[k].concat (subcomponent.subs[k]) :subcomponent.subs[k]
         return subcomponent.elems
       }
 
       // Single element
       const elem = createElement (expr)
-      elem[modelSymbol] = input
-      elem[keySymbol] = key
       return [elem]
     }
 
@@ -229,35 +234,54 @@ function build (expr, input, key, lib) {
 
     if (c  === '?') {
       const test = handlers.test (op.substr(1), input, _typeof (input))
-      return test ? eval (_l, input, key, refs) : []
+      return test ? eval (_l, scope, opts) : []
     }
 
-    if (c  === '\\') { // hacked in for a moment, need other syntax
+    if (c  === '~') {
       let k = op.substr(1)
-      const v = handlers.get (k, input)
-      return eval (_l, v, k, refs)
+      const v = handlers.get (k, input);
+      const scope = { input:v, key:k, subs:Object.create (null) };
+      scope.elems = eval (_l, scope, { context:'~' }) // model boundary
+      ;(subs[k] || (subs[k] = [])) .push (scope)
+      for (let elem of scope.elems) {
+        elem[modelSymbol] = input
+        elem[scopeSymbol] = scope
+      }
+      return scope.elems
     }
 
     if (c  === '*') {
       let nodes = []
       const value = op === c ? input : handlers.get (op.substr(1), input)
-      for (let [k, v] of handlers.iter (value))
-        nodes = nodes.concat (eval (_l, v, k, refs))
+      // ok now if c derefs, then also should create a new scope already
+      // that means though that its possible for the scope boundaries to coincode?
+      for (let [k, v] of handlers.iter (value)) {
+        // todo if * destructures then create another boundary eh
+        const scope = { input:v, key:k, subs:Object.create (null) }
+        scope.elems = eval (_l, scope, { context:'*' })
+        for (let elem of scope.elems) {
+          elem[modelSymbol] = v
+          elem[scopeSymbol] = scope
+          nodes.push (elem) // and collect it in the parent
+        }
+      }
       return nodes
     }
 
     // Algebraic
     
+    // TODO support for ; and &
+
     let last
-    const ls = eval (_l, input, key, refs)
+    const ls = eval (_l, scope, opts)
     if (c === '(') return ls
-    if (c === '+') return ls.concat (eval (_r, input, key, refs))
-    if (c === '|') return ls.length ? ls : eval (_r, input, key, refs)
+    if (c === '+') return ls.concat (eval (_r, scope, opts))
+    if (c === '|') return ls.length ? ls : eval (_r, scope, opts)
 
     if ((last = lastElem (ls))) {
 
       if (c === '>') {
-        last.append (...eval (_r, input, key, refs))
+        last.append (...eval (_r, scope, opts))
         return ls
       }
 
@@ -269,8 +293,7 @@ function build (expr, input, key, lib) {
       }
 
       else if (c === '$') last.append (String (key))
-      else if (c === '{') last.append (String (op.substr (1, op.length -2)))
-      else if (c === '@') refs [op.substr (1)] = last
+      else if (c === '"') last.append (String (op.substr (1, op.length -2)))
       else if (c  === '%') {
         const value = op === c ? input : handlers.get (op.substr(1), input)
         last.append (value == null ? '' : String (value))
@@ -296,12 +319,12 @@ const DomExImpl = createElement => {
 
     render (input, lib, key = '') {
       // private component state
-      let elem, elems, refs, model, state = 'init' // init|rendered for now
+      let elem, elems, subs, model, state = 'init' // init|rendered for now
 
       const component = {
         get elem ()  { return elems[0] || null },
         get elems () { return elems || (elems = []) },
-        get refs () { return refs },
+        get subs () { return subs },
         get value () { return model },
         set value (input) { this.render (input) }
       }
@@ -310,28 +333,30 @@ const DomExImpl = createElement => {
         if (this.prepareData) input = this.prepareData (input, k)
         if (state === 'init' || !this.shouldUpdate || this.shouldUpdate (input, model)) {
           const elems0 = elems;
-          ({ elem, elems, refs } = build (this.ast, input, k, lib));
-          for (let x of elems) x[componentSymbol] = this // Hacking it for now
+          ({ elem, elems, subs } = build (this.ast, input, k, lib));
           if (elems0 && elems0.length) {
             elems0[0].before (...elems)
             for (let x of elems0) x.remove ()
           }
-          state = 'rendered'
-          model = input
+          (state = 'rendered', model = input)
+          for (let e of elems) {
+            e[componentSymbol] = this // Hacking it for now
+            e[scopeSymbol] = this // Hacking it for now
+            // for (let type in handlers) e.addEventListener (type, handleEvent)
+          }
           if (this.didRender) this.didRender ()
         }
         return this
       }
-      
       const proto = setProto ({ render }, this)
-      return setProto (component, proto) .render (input, lib, key)
+      return setProto (component, proto) .render (input, key)
     }
   }
 
   const build = Builder (createElement, DomEx)
   DomEx.component = componentSymbol
   DomEx.model = modelSymbol
-  DomEx.key = keySymbol
+  DomEx.scope = scopeSymbol
 
   // ### Tagged string literals
 
