@@ -20,9 +20,10 @@ const log = console.log.bind (console)
 // a grammar format that is supported by the hoop parser. 
 
 let typeId = 1
+const roleMask = 0b11111111
 
-const token = (...source) => (...info) =>
-  [String.raw (...source) .replace (/\s+/g, ''), typeId++, ...info]
+const token = (...source) => (role, ...info) =>
+  [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 8) | role, ...info]
 
 // ### Tokens Roles
 // Using bitflags for the token roles. 
@@ -43,7 +44,7 @@ const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX } = FlagsOnto (Roles)
 function oneOf (tokens) {
   const regex = ''
   const infos = []
-  const r = new RegExp (tokens.map (([src, type, role, ...info]) => (infos.push ({ type, role, info }), `(${src})`)) .join ('|'), 'ys')
+  const r = new RegExp (tokens.map (([src, type, ...info]) => (infos.push ({ type, info }), `(${src})`)) .join ('|'), 'ys')
   r.infos = infos
   Object.defineProperty (r, 'next', { value:next })
 
@@ -52,8 +53,8 @@ function oneOf (tokens) {
     const match = this.exec (str)
     if (!match) return null
     let i = 1; while (match[i] == null) i++
-    const { type, role, info } = infos[i-1]
-    return [role, type, match[i], ...info]
+    const { type, info } = infos[i-1]
+    return [type, match[i], ...info]
   }
   return r
 }
@@ -67,9 +68,9 @@ function compile (grammar) {
 
 function rule (ruleName, rule) {
   const { start:s, end:e, role = LEAF, precedence = null } = rule
-  const start = [s[0], s[1], START, ruleName] // null to be replaced with lexer
-  const end = [e[0], e[1], END, role, precedence]
-  const type = typeId++
+  const type = (typeId++ << 8) | role
+  const start = [s[0], START, ruleName] // null to be replaced with lexer
+  const end = [e[0], END, role, precedence]
   const derived = { type, start, end }
   return Object.setPrototypeOf (derived, rule)
 }
@@ -80,7 +81,7 @@ function rule (ruleName, rule) {
 function Lexer (rule, ruleName, grammar) {
   const { type, start, end,
     skip = [], operands, operators,
-    role = LEAF, precedence } = rule
+    precedence } = rule
 
   const befores = skip.slice ()
   const afters = skip.slice ()
@@ -97,12 +98,16 @@ function Lexer (rule, ruleName, grammar) {
 
   for (let x of operators) {
     if (typeof x === 'function') x = x (grammar) .start
-    const role = x[1]
-    if (role & PREFIX) befores.push (x)
+    const type = x[0]
+    if (type & PREFIX) befores.push (x)
     else afters.push (x)
   }
 
-  Object.assign (this, { name:ruleName, /*start, end,*/ type, role, precedence })
+  this.name = ruleName
+  this.type = type
+  if (type & (PREFIX | INFIX | POSTFIX))
+    this.precedence = precedence
+
   Object.defineProperties (this, {
     Before: { value: oneOf (befores) },
     After: { value: oneOf (afters) }
@@ -127,18 +132,18 @@ function Parser (lexers, S0, E0) {
   let position  = 0     // current input position
   let line      = 1     // current input line
   let lastnl    = 0     // position of last newline
-  let opener, ops = [], builds // ref-cache into the current shunting yard
-  let lexer = lexers[S0[3]] // likewise // this is a bit hacky, REVIEW
+  let opener, ops, builds // ref-cache into the current shunting yard
+  let lexer = lexers[S0[2]] // likewise // this is a bit hacky, REVIEW
 
   this.parse = parse
   return this
 
   /* where */
 
-  function precedes (tok1, tok2) { // type, role, value, info
-    const p1 = tok1[3], p2 = tok2[3]
+  function precedes (tok1, tok2) { // type, value, info=precedence
+    const p1 = tok1[2], p2 = tok2[2]
     return p1 > p2 ? true
-      : p1 === p2 && p1[1] === POSTFIX ? true : false
+      : p1 === p2 && p1[0] & roleMask === POSTFIX ? true : false
   }
 
   function parse (input) { do {
@@ -169,9 +174,14 @@ function Parser (lexers, S0, E0) {
   
     // ### Parser
 
-    const role = token[0] // role, type, value, info
-    const info = token[3]
-    // log (ops, 'TOKEN', token)
+    const role = token[0] // type|role, value, info
+    const info = token[2]
+
+    // let debug = []
+    // for (let k in Roles)
+    //   if (role & Roles[k]) debug.push (k)
+    // debug = debug.join('|')
+    // log (debug, token)
 
     // Operator -- first apply ops of higher precedence
 
@@ -188,10 +198,9 @@ function Parser (lexers, S0, E0) {
     }
 
     // END - Collapses the shunting yard into a 'token'
-
     if (role & END) {
       context.pop ()
-      token = [lexer.role, lexer.type, (opener[2] + token[2]), builds[0], lexer.precedence];
+      token = [lexer.type, (opener[1] + token[1]), builds[0], lexer.precedence];
       // log ('END', token, lexer)
       if (!context.length) return token;
       ;({ opener, ops, builds, lexer } = context [context.length-1])
@@ -202,7 +211,8 @@ function Parser (lexers, S0, E0) {
     // TODO this should store the state? to prevent 
     // tokenInfo from returning something invalid?
 
-    else if (role & START) { 
+    if (role & START) { 
+      token.length = 3
       opener = token
       ops    = []
       builds = []
@@ -212,6 +222,7 @@ function Parser (lexers, S0, E0) {
     }
 
     else if (role & LEAF) { // TODO Err if state is After
+      token.length = 3
       builds.push (token)
       state = POST
     }
@@ -223,7 +234,7 @@ function Parser (lexers, S0, E0) {
 
     else if (role & POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
-      // if (token.length > 4) token.length = 4
+      token.length = 3
       builds[i] = [token, builds[i]]
       state = POST
     }

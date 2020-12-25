@@ -6,5 +6,5 @@ excludeInFileChooser = "{node_modules,private,dist}"
 [src/domexp.js]
 TM_RUN_TARGET = ../test/domexp-test.js
 
-[src/hoop2.js]
-TM_RUN_TARGET = ../src/grammar.js
+[{src/hoop2.js,src/grammar.js}]
+TM_RUN_TARGET = ../test/parser-test.js
