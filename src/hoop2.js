@@ -79,21 +79,24 @@ function rule (ruleName, rule) {
 // compiled from a single 'rule'
 
 function Lexer (rule, ruleName, grammar) {
+  const befores = [], afters = []
   const { type, start, end,
     skip = [], operands, operators,
     precedence } = rule
 
-  const befores = skip.slice ()
-  const afters = skip.slice ()
+  for (let x of skip) {
+    befores.push ([x[0], SKIP])
+    afters.push ([x[0], SKIP])
+  }
   afters.push (end)
 
   for (let x of operands) {
     if (typeof x === 'function') {
       const subrule = x (grammar)
       befores.push (subrule.start)
-      afters.push (subrule.end)
+      // afters.push (subrule.end)
     }
-    else befores.push (x)
+    else befores.push ([x[0], x[1] | LEAF])
   }
 
   for (let x of operators) {
@@ -194,15 +197,17 @@ function Parser (lexers, S0, E0) {
       const arity = op[0] & INFIX ? 2 : 1
       const i = builds.length - arity
       // log ('apply', op[2], arity, i)
+      op.pop.length-- // remove precedence info
       builds[i] = [op, ...builds.splice (i, arity)]
     }
 
     // END - Collapses the shunting yard into a 'token'
     if (role & END) {
       context.pop ()
-      token = [lexer.type, (opener[1] + token[1]), builds[0], lexer.precedence];
-      // log ('END', token, lexer)
+      token = [lexer.type, (opener[1] + token[1]), builds[0]];
       if (!context.length) return token;
+      // add precedence info
+      if (lexer.type & (PREFIX | INFIX | POSTFIX)) token.push (lexer.precedence)
       ;({ opener, ops, builds, lexer } = context [context.length-1])
       continue
     }
@@ -212,7 +217,6 @@ function Parser (lexers, S0, E0) {
     // tokenInfo from returning something invalid?
 
     if (role & START) { 
-      token.length = 3
       opener = token
       ops    = []
       builds = []
@@ -222,19 +226,19 @@ function Parser (lexers, S0, E0) {
     }
 
     else if (role & LEAF) { // TODO Err if state is After
-      token.length = 3
       builds.push (token)
       state = POST
     }
 
     else if (role & (PREFIX | INFIX)) { // Err if state is Before
+      token.length-- // remove precedence info
       ops[ops.length] = token //, role, arity: role & INFIX ? 2 : 1 }
       state = PRE
     }
 
     else if (role & POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
-      token.length = 3
+      token.length-- // remove precedence info
       builds[i] = [token, builds[i]]
       state = POST
     }

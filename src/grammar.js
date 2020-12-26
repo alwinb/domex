@@ -7,31 +7,31 @@ const { START, END, LEAF, PREFIX, INFIX, POSTFIX, SKIP } = hoop.Roles
 // -----------------
 
 const tokens = {
-  space:     token `[\t\f\x20]+` (SKIP),
-  comment:   token   `// [^\n]*` (SKIP),
-  newline:   token        `[\n]` (SKIP),
+  space:     token `[\t\f\x20]+` (), // TODO tag the roles in the rule compiler for operators also
+  comment:   token   `// [^\n]*` (), 
+  newline:   token        `[\n]` (), 
 
-  elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
-  attrName:  token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
+  elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (),
+  attrName:  token `[a-zA-Z] [a-zA-Z0-9_\-]*` (),
 
-  start:     token   `[(]` (START),
-  end:       token   `[)]` (END),
+  start:     token   `[(]` (),
+  end:       token   `[)]` (),
 
-  strStart:  token   `["]` (START),
-  strChars:  token `[^"]+` (LEAF),
-  empty:     token  `.{0}` (LEAF),
+  strStart:  token   `["]` (),
+  strChars:  token `[^"]+` (),
+  empty:     token  `.{0}` (),
   strCat:    token  `.{0}` (INFIX, 0),
-  strEnd:    token   `["]` (END),
+  strEnd:    token   `["]` (),
 
   descend:   token   `[>]` (INFIX, 3),
   append:    token   `[+]` (INFIX, 3),
   orelse:    token   `[|]` (INFIX, 2),
   declare:   token   `[;]` (INFIX & POSTFIX, 0),
 
-  attrStart: token    `\[` (START),
+  attrStart: token    `\[` (),
   assign:    token   `[=]` (INFIX, 9),
   attrNext:  token  `.{0}` (INFIX, 0),
-  attrEnd:   token    `\]` (END),
+  attrEnd:   token    `\]` (),
 
   klass:     token   `[.] [a-zA-Z]+` (POSTFIX, 9),
   hash:      token   `[#] [a-zA-Z]+` (POSTFIX, 9),
@@ -98,10 +98,6 @@ const Text = rule ('Text', Object.setPrototypeOf ({
 // creating lexer-states from the token descriptions
 
 const lexers = hoop.compile ({ Tree, Attr, Quoted, Text })
-
-// See if it works with the parser
-// arch I think I need to change the parser now anyway
-// as the lexer produces the tokeninfo-annotated tokens
 
 function parse (input) {
   const S0 = lexers.Tree.Before.next ('(')
