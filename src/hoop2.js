@@ -61,47 +61,46 @@ function oneOf (tokens) {
 
 function compile (grammar) {
   const lexers = {}
-  for (let ruleName in grammar)
-    lexers [ruleName] = new Lexer (grammar[ruleName], ruleName, grammar)    
+  for (let ruleName in grammar) {
+    const r = grammar[ruleName]
+    lexers [ruleName] = new Lexer (ruleName, r, grammar)    
+  }
   return lexers
 }
 
-function rule (ruleName, rule) {
-  const { start:s, end:e, role = LEAF, precedence = null } = rule
-  const type = (typeId++ << 8) | role
-  const start = [s[0], START, ruleName] // null to be replaced with lexer
-  const end = [e[0], END, role, precedence]
-  const derived = { type, start, end }
-  return Object.setPrototypeOf (derived, rule)
-}
 
 // Two- state lexer,
 // compiled from a single 'rule'
 
-function Lexer (rule, ruleName, grammar) {
+function Lexer (ruleName, rule, grammar) {
   const befores = [], afters = []
-  const { type, start, end,
-    skip = [], operands, operators,
+  const { role = LEAF, start, end,
+    skip = [], infix = [], operands = [], operators = [],
     precedence } = rule
+  const type = (typeId++ << 8) | role
 
   for (let x of skip) {
     befores.push ([x[0], SKIP])
     afters.push ([x[0], SKIP])
   }
-  afters.push (end)
+  afters.push ([end[0], END, type, precedence])
 
   for (let x of operands) {
     if (typeof x === 'function') {
       const subrule = x (grammar)
-      befores.push (subrule.start)
-      // afters.push (subrule.end)
+      const s = subrule.start
+      befores.push ([s[0], START, subrule.name])
     }
-    else befores.push ([x[0], x[1] | LEAF])
+    else befores.push ([x[0], x[1]|LEAF])
   }
 
   for (let x of operators) {
-    if (typeof x === 'function') x = x (grammar) .start
-    const type = x[0]
+    if (typeof x === 'function') {
+      const subrule = x (grammar)
+      const s = subrule.start
+      x = [s[0], START, subrule.name]
+    }
+    const type = x[1]
     if (type & PREFIX) befores.push (x)
     else afters.push (x)
   }
@@ -132,6 +131,7 @@ function Parser (lexers, S0, E0) {
   const context = []    // stack of shunting yards
   let state     = PRE   // current lexer-state
   let token     = S0    // current input token+info (or node)
+  let group     = null  // possible START-END group to be reused as 'token'
   let position  = 0     // current input position
   let line      = 1     // current input line
   let lastnl    = 0     // position of last newline
@@ -144,6 +144,7 @@ function Parser (lexers, S0, E0) {
   /* where */
 
   function precedes (tok1, tok2) { // type, value, info=precedence
+    // log (tok1, tok2)
     const p1 = tok1[2], p2 = tok2[2]
     return p1 > p2 ? true
       : p1 === p2 && p1[0] & roleMask === POSTFIX ? true : false
@@ -153,7 +154,7 @@ function Parser (lexers, S0, E0) {
 
     // ### Token Producer
 
-    if (token == null) {
+    if (group == null && token == null) {
       const regex = state === PRE ? lexer.Before : lexer.After
       token = regex.next (input, position)
 
@@ -177,19 +178,21 @@ function Parser (lexers, S0, E0) {
   
     // ### Parser
 
-    const role = token[0] // type|role, value, info
-    const info = token[2]
+    const role = group ? group[0][0] : token[0] // type|role, value, info
+    const info = group ? group[0][2] : token[2]
 
-    // let debug = []
-    // for (let k in Roles)
-    //   if (role & Roles[k]) debug.push (k)
-    // debug = debug.join('|')
-    // log (debug, token)
+    /*
+    let debug = []
+    for (let k in Roles)
+      if (role & Roles[k]) debug.push (k)
+    debug = debug.join('|')
+    log (debug, token, group) //*/
 
     // Operator -- first apply ops of higher precedence
 
     let l = role & (LEAF | START | SKIP) ? -1 : ops.length-1
     for (; l >= 0; l--) {
+      // TODO I suspect that this breaks with HOOPs (ie 'group' on ops stack)
       const op = ops[l]
       const useStack = (role & END) || precedes (op, token)
       if (!useStack) break
@@ -197,14 +200,15 @@ function Parser (lexers, S0, E0) {
       const arity = op[0] & INFIX ? 2 : 1
       const i = builds.length - arity
       // log ('apply', op[2], arity, i)
-      op.pop.length-- // remove precedence info
+      op.length-- // remove precedence info
       builds[i] = [op, ...builds.splice (i, arity)]
     }
 
     // END - Collapses the shunting yard into a 'token'
     if (role & END) {
       context.pop ()
-      token = [lexer.type, (opener[1] + token[1]), builds[0]];
+      token = [[lexer.type, opener[1] + token[1]], builds[0]];
+      group = token
       if (!context.length) return token;
       // add precedence info
       if (lexer.type & (PREFIX | INFIX | POSTFIX)) token.push (lexer.precedence)
@@ -231,7 +235,6 @@ function Parser (lexers, S0, E0) {
     }
 
     else if (role & (PREFIX | INFIX)) { // Err if state is Before
-      token.length-- // remove precedence info
       ops[ops.length] = token //, role, arity: role & INFIX ? 2 : 1 }
       state = PRE
     }
@@ -243,7 +246,7 @@ function Parser (lexers, S0, E0) {
       state = POST
     }
 
-    token = null
+    group = token = null
 
   } while (1) }
 
@@ -253,4 +256,4 @@ function Parser (lexers, S0, E0) {
 // Exports
 // =======
 
-module.exports = { compile, Parser, Roles, token, rule }
+module.exports = { compile, Parser, Roles, token }
