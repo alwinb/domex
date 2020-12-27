@@ -32,7 +32,7 @@ const FlagsOnto = (map = {}, start = 0) =>
   new Proxy ({}, { get:($,k) => map [k] || (map[k] = 1 << start++) })
 
 const Roles = { }
-const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX } = FlagsOnto (Roles)
+const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX, GROUP } = FlagsOnto (Roles)
 
 // ### Lexer compiler
 
@@ -77,7 +77,7 @@ function Lexer (ruleName, rule, grammar) {
   const { role = LEAF, start, end,
     skip = [], infix = [], operands = [], operators = [],
     precedence } = rule
-  const type = (typeId++ << 8) | role
+  const type = (typeId++ << 8) | role | GROUP
 
   for (let x of skip) {
     befores.push ([x[0], SKIP])
@@ -131,7 +131,7 @@ function Parser (lexers, S0, E0) {
   const context = []    // stack of shunting yards
   let state     = PRE   // current lexer-state
   let token     = S0    // current input token+info (or node)
-  let group     = null  // possible START-END group to be reused as 'token'
+  let group     = null  // token is a START-END group to be reused as 'token'
   let position  = 0     // current input position
   let line      = 1     // current input line
   let lastnl    = 0     // position of last newline
@@ -192,7 +192,7 @@ function Parser (lexers, S0, E0) {
 
     let l = role & (LEAF | START | SKIP) ? -1 : ops.length-1
     for (; l >= 0; l--) {
-      // TODO I suspect that this breaks with HOOPs (ie 'group' on ops stack)
+      // TODO I suspect that this breaks with HOOPs (ie 'groups' on ops stack)
       const op = ops[l]
       const useStack = (role & END) || precedes (op, token)
       if (!useStack) break
@@ -242,7 +242,10 @@ function Parser (lexers, S0, E0) {
     else if (role & POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
       token.length-- // remove precedence info
-      builds[i] = [token, builds[i]]
+      if (typeof token[0] !== 'number') // NB flattening HOOP here
+        builds[i] = [...token, builds[i]]
+      else
+        builds[i] = [token, builds[i]]
       state = POST
     }
 
