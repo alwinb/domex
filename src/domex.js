@@ -254,17 +254,22 @@ function build (expr, input, key, lib) {
       let nodes = []
       const value = op === c ? input : handlers.get (op.substr(1), input)
       // ok now if c derefs, then also should create a new scope already
-      // that means though that its possible for the scope boundaries to coincode?
+      // that means though that its possible for the scope boundaries to coincode? YEs
+      const listSubs = Object.create (null)
+      const parentScope = { input, key, subs:listSubs }
       for (let [k, v] of handlers.iter (value)) {
         // todo if * destructures then create another boundary eh
-        const scope = { input:v, key:k, subs:Object.create (null) }
+        const scope = { input:v, key:k, subs:Object.create (null), parentScope }
         scope.elems = eval (_l, scope, { context:'*' })
         for (let elem of scope.elems) {
           elem[modelSymbol] = v
           elem[scopeSymbol] = scope
           nodes.push (elem) // and collect it in the parent
+          ;(listSubs[k] || (listSubs[k] = [])) .push (scope)
         }
       }
+      parentScope.elems = nodes
+      // TODO add to subs // man am I making a mess ;)
       return nodes
     }
 
