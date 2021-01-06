@@ -1,0 +1,14 @@
+{
+  "name": "domex",
+  "version": "0.3.1",
+  "description": "An expression language for constructing DOM trees from data",
+  "main": "src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alwin Blok",
+  "license": "SEE LICENSE IN LICENSE"
+}
