@@ -1,6 +1,5 @@
-const { Roles: { GROUP, PREFIX, INFIX, POSTFIX, LEAF } } = require ('./hoop2')
-const { tokenTypes:T } = require ('./grammar')
-
+const { typeMask } = require ('./hoop2')
+const { tokenTypes } = require ('./grammar')
 
 // Evaluator
 // =========
@@ -50,8 +49,36 @@ function fold (expr, apply) {
 }
 
 
-//----------
-// Try it
+// `types` Algebra
+// ===============
+// Some pre-evaluation;
+// Bottom up type assignment;
+// Assert some additional type constraints.
+
+// first,
+// remove the operator info from the token types
+
+const T = { }
+const typeNames = {}
+const N = typeNames
+for (let k in tokenTypes) {
+  const t = T[k] = tokenTypes[k]>>8
+  typeNames[t] = k
+}
+// log (tokenTypes, T)
+
+// helper: assoc -- expr may be n-ary,
+// collates immediate subexpressions with tag t
+
+function _assoc (t, expr) {
+  const [_, x, y] = expr
+  const nary = [expr[0]]
+  if (x.type === t) nary.push (...x.expr.slice(1))
+  else nary.push (x)
+  if (y.type === t) nary.push (...y.expr.slice(1))
+  else nary.push (y)
+  return nary
+}
 
 const _escapes = {
   '\\/': '/',
@@ -63,53 +90,112 @@ const _escapes = {
   '\\t': '\t',
 }
 
+// The Algebra
+// -----------
+
+function types (...expr) {
+  const [[tag, data], x, y] = expr
+  expr = [...expr]
+  expr[0][0] = N[expr[0][0] >> 8] // for development/ pretty print
+  switch (tag >> 8) {
+
+    // ### Tree operands
+
+    case T.Tree: // replace `()` group with contents
+      return x
+
+    case T.elem:
+      return { type: N[T.elem], expr }
+
+    case T.component:
+      return { type: N[T.component], expr }
+
+    // ### Tree operators
+
+    case T.append: // flatten nested `+` to n-ary `+`
+      return { type:N[T.append], expr: _assoc (N[T.append], expr)}
+
+    case T.orelse: // flatten nested `|` to n-ary `|`
+      return { type:N[T.orelse], expr: _assoc (N[T.orelse], expr)}
+
+    case T.declare: // flatten nested `;` to n-ary `;` // REVIEW/ design
+      return { type:N[T.declare], expr: _assoc (N[T.declare], expr)}
+
+    case T.iter:
+      return { type: N[T.iter], expr }
+
+    case T.test: // convert to 1-ary `|`
+      return { type: N[T.orelse], expr:[[N[T.orelse], '|'], expr] }
+    
+    case T.descend:
+    case T.def:
+    case T.bind:
+    case T.value:
+    case T.key:
+
+    // TODO flatten the attribute ops too
+    case T.klass:
+    case T.hash:
+    case T.Attr: // 'assign attributes': higher order postfix operator
+      return { type: N[T.Tree], expr }
+
+    case T.Text: // 'append-text': higher order postfix operator
+      return { type: N[T.Tree], expr:[ [N[T.Text], x], y] }
+    
+    // ### Attribute operands
+
+    case T.attrName:
+      return { type: N[T.attrName], expr:data }
+
+    case T.Quoted: // evaluate quoted values (group)
+      return { type: N[T.Quoted], expr:[N[T.Quoted], x] }
+
+    // ### Attribute  operators (assign)
+    // case T.attrNext:
+    case T.assign: // restrict types of x and y
+      if (x.type !== N[T.attrName]) throw new TypeError ('Lhs of `=` must be attrName, got '+x.type)
+      if (y.type === N[T.assign]) throw new TypeError ('Rhs of `=` must not be an assignment')
+      return { type: N[T.assign], expr:[[N[T.assign], x.expr], y.expr] } // REVIEW rewrap attrNames in value position
+
+    // ### Strings (Text/ Quoted)
+
+    // operands -- evaluate strings
+    case T.strChars: return data
+    case T.escape: return _escapes [data]
+    case T.empty: return ''
+    case T.hexescape: return '' // TODO
+    // operators
+    case T.strCat: return x + y
+
+    // ### Default branch / Error
+    default:
+      log ('apply - type - unknown', N[tag>>8], expr)
+  }
+}
+
+
+// Try it
+// ======
+
 const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
 
 //var sample = 'a + b [foo="bar\\nbee"] + div @host'
-var sample = 'a "foo\\nbar"; form @b > c@d; e@f'
+//var sample = 'a "foo\\nbar"; form @b > c@d; e@f'
+var sample = 'p "hello\\nworld" > (a + b)'
+var sample = 'a[d="e\\nf"]'
+var sample = 'a[d=f=g]'
+var sample = 'a[d=f]' // TODO should probably not unwrap attrName f ? use unquoted instead?
+//var sample = 'a[d=%]' // FIXME
+//var sample = 'a[a=b c=d]' // FIXME
+var sample = 'a + b + g + (c | d | e) + e + f'
+var sample = 'a?x | b?y | c'
+var sample = '(a + b + c)*name'
+var sample = 'a; b; c'
 
 log (sample, '\n===============\n')
 const tree = parse (sample)
-log (tree)
-const alg = (...args) => (['X', ...args])
+// log (JSON.stringify (tree))
 
-for (let k in T) T[k] = T[k]>>8
-
-
-// Humm first try and work wih the algebra itself a bit more. 
-// I need the constants to be evaluated differently, not within apply ?
-
-
-const defs = []
-const decls = {}
-  
-function apply (...expr) {
-  const [[_tag, data], x, y] = expr
-  const tag = _tag >> 8
-
-  if (tag === T.Tree) expr = x
-  else if (tag === T.strCat) expr = x + y
-  else if (tag === T.escape) expr = _escapes [data]
-  else if (tag === T.strChars) expr = data
-  else if (tag === T.empty) expr = data
-  else if (tag === T.declare) {
-    for (let k of defs)
-      decls[k] = expr
-    defs = []
-  }
-  else if (tag === T.def) {
-    defs.push [data.substr(1)]
-  }
-
-  // if (tag === T.Quoted) return x
-  // if (tag === T.Text) return x
-  return expr
-}
-
-var folded = fold (tree, apply)
+var folded = fold (tree, types)
 log (JSON.stringify (folded, 0, 2))
-log (decls)
-
-
-

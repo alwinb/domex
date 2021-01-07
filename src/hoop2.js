@@ -21,6 +21,7 @@ const log = console.log.bind (console)
 
 let typeId = 1
 const roleMask = 0b11111111
+const typeMask = ~roleMask
 
 const token = (...source) => (role, ...info) =>
   [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 8) | role, ...info]
@@ -259,4 +260,4 @@ function Parser (lexers, S0, E0) {
 // Exports
 // =======
 
-module.exports = { compile, Parser, Roles, token }
+module.exports = { compile, Parser, Roles, token, roleMask, typeMask }
