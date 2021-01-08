@@ -33,7 +33,7 @@ const tokens = {
 
   attrStart: token    `\[` (START),
   assign:    token   `[=]` (INFIX, 9),
-  attrNext:  token   `.{0}` (INFIX, 0),
+  attrNext:  token   `.{0}(?![[=])` (INFIX, 0),
   attrEnd:   token    `\]` (END),
 
   klass:     token   `[.] [a-zA-Z]+` (POSTFIX, 9),
@@ -76,8 +76,8 @@ const signature = {
     precedence: 9,
     start: T.attrStart,
     skip: [ T.space, T.comment, T.newline ],
-    operands: [ T.attrName, $ => $.Quoted ],
-    operators: [ T.assign ], // attrNext
+    operands: [ T.attrName, T.value, T.key, $ => $.Quoted ],
+    operators: [ T.assign, T.attrNext ],
     end: T.attrEnd,
   },
 
