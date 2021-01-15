@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
-const { fold, preEval } = require ('../src/eval.js')
+const { fold, preEval } = require ('../src/compile.js')
 
 // Test
 // ====

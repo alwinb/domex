@@ -14,7 +14,6 @@ function fold (expr, apply) {
   const stack = [ root ]
   let RET, l
 
-  // TODO wrap in try and show my own stacktrace
   while (l = stack.length) {
     const frame = stack[l-1]
     const [branch, expr] = frame
