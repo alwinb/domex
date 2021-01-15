@@ -1,0 +1,10 @@
+
+form @login
+  > h1 "Login"
+  + label
+    > (span "name" 
+    + input [name=name])
+  + button "login" ;
+
+html > (head > title "login")
+  + body > @login

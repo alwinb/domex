@@ -13,7 +13,7 @@ const tokens = {
 
   elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
   attrName:  token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
-  component: token `[A-Z] [a-zA-Z0-9_\-]*` (LEAF),
+  component: token `@ [a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
 
   start:     token   `[(]` (START),
   end:       token   `[)]` (END),

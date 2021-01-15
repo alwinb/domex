@@ -6,7 +6,7 @@ const { tokenTypes } = require ('./grammar')
 
 // Simple traversal based fold for trees as follows:
 // tree := [number, string] | [tree, ...trees]
-// however, leafs [number, string] at an index of 0 are not passed to the
+// however, leafs [number, string, ...annotations] at an index of 0 are not passed to the
 // supplied algebra -- these are considered to be operator names, not elements. 
 
 function fold (expr, apply) {
@@ -51,7 +51,7 @@ function fold (expr, apply) {
 
 
 // `preEval` Algebra
-// ===============
+// =================
 // Some pre-evaluation;
 // Bottom up type assignment;
 // Assert some additional type constraints.
@@ -94,13 +94,9 @@ function defbound (expr) {
   let expr_ = [expr[0]]
   for (let i=1, l=expr.length; i<l; i++) {
     let x = expr[i], xa = x[0][2]
-    x[0].length = 2; // NB removes annotation from the subexpression
-    const names = xa && xa.names ? xa.names : null
-    if (names && names.length) {
-      // Add a new ast-node on top of x, to store the lib/ scope
-      const lib = {}
-      names.forEach (_ => lib[_] = x )
-      x = [['scope', lib], ['use', names[0]]]
+    //x[0].length = 2; // NB removes annotation from the subexpression
+    if (xa && xa.name != null) {
+      x = [['scope', xa.name], x, ['use', xa.name]]
     }
     expr_[i] = x
   }
@@ -123,7 +119,7 @@ const _escapes = {
 
 function preEval (...expr) {
   const [[tag, data], x, y] = expr
-  const xa = x && x[0] && x[0][2] // putting annotations on the operator ;)
+  const xa = (x && x[0] && x[0][2])||{} // putting annotations on the operator ;)
   expr[0][0] = N[expr[0][0] >> 8] // for development/ pretty print
   switch (tag >> 8) {
 
@@ -144,11 +140,12 @@ function preEval (...expr) {
     case T.orelse: // flatten nested `|` to n-ary `|`
       return _assoc (N[T.orelse], defbound (expr))
 
-    case T.declare: // flatten nested `;` to n-ary `;` // REVIEW/ design
-      // TODO so here the defs work differently?
-      // they should all be collected and then tagged on top
-      // of the last expression instead of on the individual ones.
-      return _assoc (N[T.declare], defbound (expr))
+    case T.declare: 
+      const ya = y[0][2]||{}
+      const lib = 'lib' in ya ? ya.lib : {}
+      if (ya.name != null) lib[ya.name] = y
+      if (xa.name != null) lib[xa.name] = x
+      return ann (y, { lib })
 
     case T.iter:
       return defbound (expr)
@@ -222,41 +219,4 @@ function preEval (...expr) {
   }
 }
 
-
-// Try it
-// ======
-
-const log = console.log.bind (console)
-const { parse } = require ('../src/grammar.js')
-
-//var sample = 'a + b [foo="bar\\nbee"] + div @host'
-//var sample = 'a "foo\\nbar"; form @b > c@d; e@f'
-var sample = 'p "hello\\nworld" > (a + b)'
-var sample = 'a[d="e\\nf"]'
-var sample = 'a[d=f=g]'
-var sample = 'a[d=f]' // TODO should probably wrap f
-var sample = 'a[b =c d="e\\n" f g]'
-var sample = 'a + b + g + (c | d | e) + e + f'
-var sample = 'a?x | b?y | c'
-var sample = '(a + b + c)*name'
-var sample = 'a; b; c'
-var sample = 'a[a=b c=d f=%]'
-var sample = 'a[d=%]'
-// var sample = '(form @login #login > input + button) @foo' // should throw
-var sample = '(form @login #login > input + button)* @foo'
-var sample = '(a@A | b@B | c) @foo'
-var sample = '(a@A?a | b?b@B | c) @foo'
-var sample = 'a@A?a > b?b@B'
-var sample = 'div "ab\\u0020c"'
-var sample = 'div %name'
-var sample = 'div@a %'
-var sample = 'div % @a'
-var sample = 'div@a %~name'
-var sample = 'div %~name @a'
-
-log (sample, '\n===============\n')
-const tree = parse (sample)
-// log (JSON.stringify (tree))
-
-var folded = fold (tree, preEval)
-log (JSON.stringify (folded, 0, 2))
+module.exports = { fold, preEval }
