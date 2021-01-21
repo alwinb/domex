@@ -8,21 +8,33 @@ const define = (obj, arg2, arg3) => typeof arg2 === 'string'
 // Dom Compat (sub API)
 // --------------------
 
+// TODO add plaintext/rawtext/  tags ea
+const voidTags = {
+  area:1,    base:1,  basefont:1,
+  bgsound:1, br:1,    col:1,
+  embed:1,   frame:1, hr:1,
+  img:1,     input:1, keygen:1,
+  link:1,    meta:1,  param:1, 
+  source:1,  track:1
+}
+
+
 class El {
 
   static *render (el) {
     yield* `<${ el.tagName }${ El.renderAttributes (el) }>`
+    if (el.tagName in voidTags) return
     for (let n of el.childNodes)
       if (typeof n === 'string') yield n
       else yield* El.render (n)
     yield `</${ el.tagName }>`
   }
 
-  static renderAttributes (el) { // TODO proper escapes
+  static renderAttributes (el) {
     const r = [ ]
     for (let [k,v] of el.attributes) {
       r.push (' ', k)
-      if (v !== '') r.push ('=', v)
+      if (v !== '') r.push ('=', '"', v.replace (/"/g, '&quot;'), '"')
     }
     return r.join ('')
   }
@@ -59,8 +71,12 @@ class El {
 
 }
 
+function createTextNode (data) {
+  return data
+}
+
 function createElement (tagName) {
   return new El (tagName)
 }
 
-module.exports = { El, createElement }
+module.exports = { El, createElement, createTextNode }

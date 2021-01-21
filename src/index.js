@@ -1,4 +1,4 @@
 const log = console.log.bind (console)
 const { DomExImpl } = require ('./domex')
-const { createElement } = require ('./dom')
-module.exports = DomExImpl (createElement)
+const { createElement, createTextNode } = require ('./dom')
+module.exports = DomExImpl (createElement, createTextNode)
