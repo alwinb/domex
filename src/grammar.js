@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const hoop = require ('./hoop2.js')
-const { token } = hoop
+const { token, tokenType } = hoop
 const { START, END, LEAF, PREFIX, INFIX, POSTFIX, SKIP } = hoop.Roles
 
 // Grammar for Domex
@@ -40,11 +40,16 @@ const tokens = {
   hash:      token   `[#] [a-zA-Z]+` (POSTFIX, 9),
   def:       token   `[@] [a-zA-Z]+` (POSTFIX, 9),
 
-  test:      token   `[?] [a-zA-Z]+` (POSTFIX, 9),
+  test:      token   `[:] [a-zA-Z]+` (POSTFIX, 9),
   bind:      token   `[~] [a-zA-Z]+` (POSTFIX, 9),
   iter:      token   `[*] [a-zA-Z]*` (POSTFIX, 9),
   value:     token   `[%] [a-zA-Z]*` (POSTFIX, 9),
   key:       token   `[$]` (POSTFIX, 9),
+
+  // Additional tags to be used by compile and eval
+  text: tokenType (),
+  void: tokenType ()
+  
 }
 
 const T = tokens

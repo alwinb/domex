@@ -26,10 +26,8 @@ function fold (expr, apply) {
       stack.length--
     }
 
-    // pass up ... and optionally down again
+    // pass up and unless at end, move down
     else if (RET) {
-      // hoops are flattened in the parser
-      // log ('RET', RET[1])
       expr[branch] = branch ? apply (...RET[1]) : RET[1][0]
       if (branch === expr.length-1) {
         RET = frame
