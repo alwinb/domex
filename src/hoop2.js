@@ -26,6 +26,8 @@ const typeMask = ~roleMask
 const token = (...source) => (role, ...info) =>
   [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 8) | role, ...info]
 
+const tokenType = () => ['', typeId++ << 8] // HACK to produce typeIds, for now
+
 // ### Tokens Roles
 // Using bitflags for the token roles. 
 
@@ -260,4 +262,4 @@ function Parser (lexers, S0, E0) {
 // Exports
 // =======
 
-module.exports = { compile, Parser, Roles, token, roleMask, typeMask }
+module.exports = { compile, Parser, Roles, token, tokenType, roleMask, typeMask }
