@@ -1,3 +1,4 @@
+const log = console.log.bind (console)
 const { typeMask } = require ('./hoop2')
 const { tokenTypes } = require ('./grammar')
 
@@ -93,7 +94,7 @@ function defbound (expr) {
     let x = expr[i], xa = x[0][2]
     //x[0].length = 2; // NB removes annotation from the subexpression
     if (xa && xa.name != null) {
-      x = [['scope', xa.name], x, ['use', xa.name]]
+      x = [['scope', xa.name], x, [N[T.component], xa.name]]
     }
     expr_[i] = x
   }
@@ -212,7 +213,7 @@ function preEval (...expr) {
 
     // ### Default branch / Error
     default:
-      throw new error ('preEval: unknown operator type ' + tag>>8 +' ' + N[tag>>8])
+      throw new Error (`preEval: unknown operator type: ${tag} ${tag>>8} ${N[tag>>8]}`)
   }
 }
 

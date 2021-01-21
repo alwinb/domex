@@ -127,4 +127,4 @@ const types = {}
 for (let k in T) types[k] = T[k][1]
 for (let k in signatures) types[k] = signatures[k].type
 
-module.exports = { parse, tokenTypes:types, Roles:hoop.Roles }
+module.exports = { signatures, parse, tokenTypes:types, Roles:hoop.Roles }

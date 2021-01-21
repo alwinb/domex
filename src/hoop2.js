@@ -123,21 +123,16 @@ function Lexer (ruleName, rule, grammar) {
 // Runtime
 // -------
 
-// TODO I want to push the limits of the hoop parser a bit further, adding 
-// support for separator+terminators such as trailing commas by setting
-// their role to INFIX | POSTFIX -- to mean INFIX until stuck (e.g. before END)
-// and POSTFIX otherwise.
-
 const PRE = Symbol ('PRE '), POST = Symbol ('POST')
 
-function Parser (lexers, S0, E0) { 
-  const context = []    // stack of shunting yards
-  let state     = PRE   // current lexer-state
-  let token     = S0    // current input token+info (or node)
-  let group     = null  // token is a START-END group to be reused as 'token'
+function Parser (lexers, S0, E0, apply = (...args) => args) { 
   let position  = 0     // current input position
   let line      = 1     // current input line
   let lastnl    = 0     // position of last newline
+  let state     = PRE   // current lexer-state
+  let token     = S0    // possible current input token + info (or node)
+  let group     = null  // possible higher order token returned from last call
+  const context = []    // stack of shunting yards
   let opener, ops, builds // ref-cache into the current shunting yard
   let lexer = lexers[S0[2]] // likewise // this is a bit hacky, REVIEW
 
@@ -202,9 +197,8 @@ function Parser (lexers, S0, E0) {
       ops.length--
       const arity = op[0] & INFIX ? 2 : 1
       const i = builds.length - arity
-      // log ('apply', op[2], arity, i)
       op.length-- // remove precedence info
-      builds[i] = [op, ...builds.splice (i, arity)]
+      builds[i] = apply (op, ...builds.splice (i, arity))
     }
 
     // END - Collapses the shunting yard into a 'token'
@@ -233,7 +227,7 @@ function Parser (lexers, S0, E0) {
     }
 
     else if (role & LEAF) { // TODO Err if state is After
-      builds.push (token)
+      builds[builds.length] = group ? apply (...group) : apply (token)
       state = POST
     }
 
@@ -246,9 +240,9 @@ function Parser (lexers, S0, E0) {
       const i = builds.length-1
       token.length-- // remove precedence info
       if (typeof token[0] !== 'number') // NB flattening HOOP here
-        builds[i] = [...token, builds[i]]
+        builds[i] = apply (...token, builds[i])
       else
-        builds[i] = [token, builds[i]]
+        builds[i] = apply (token, builds[i])
       state = POST
     }
 
