@@ -2,66 +2,16 @@ const log = console.log.bind (console)
 const { typeMask } = require ('./hoop2')
 const { tokenTypes } = require ('./grammar')
 
-// Evaluator
-// =========
-
-// Simple traversal based fold for trees as follows:
-// tree := [number, string] | [tree, ...trees]
-// however, leafs [number, string, ...annotations] at an index of 0 are not passed to the
-// supplied algebra -- these are considered to be operator names, not elements. 
-
-function fold (expr, apply) {
-  const root = [0, [...expr]]
-  const stack = [ root ]
-  let RET, l
-
-  while (l = stack.length) {
-    const frame = stack[l-1]
-    const [branch, expr] = frame
-    const op = expr[0]
-
-    // bottom out
-    if (typeof op === 'number') {
-      RET = frame
-      frame[1] = [[op, expr[1]]]
-      stack.length--
-    }
-
-    // pass up and unless at end, move down
-    else if (RET) {
-      expr[branch] = branch ? apply (...RET[1]) : RET[1][0]
-      if (branch === expr.length-1) {
-        RET = frame
-        stack.length--
-      }
-      else {
-        RET = null
-        frame[0] = branch + 1
-      }
-    }
-
-    // descend
-    else
-      stack[l] = [0, [...expr[branch]]]
-  }
-  return apply (...RET[1])
-}
-
-
 // `preEval` Algebra
 // =================
 // Some pre-evaluation;
-// Bottom up type assignment;
 // Assert some additional type constraints.
 
-// first,
-// remove the operator info from the token types
-
-const T = { }
-const typeNames = {}
+const T = tokenTypes
+const typeNames = { }
 const N = typeNames
 for (let k in tokenTypes) {
-  const t = T[k] = tokenTypes[k]>>8
+  const t = T[k]
   typeNames[t] = k
 }
 // log (tokenTypes, T)
@@ -86,15 +36,19 @@ function ann (expr, a) {
   return e
 }
 
-function defbound (expr) {
-  // check if the operands contain defs
-  // if so, create lib and wrap expr in a scope node
+// So this adds a binary 'let' operator akin to
+// let name = expr1 in expr2
+
+// This is like def, but defs are removed by the compiler
+// and converted to lets -- indeed defs are distributed upwards
+
+function bindDefs (expr) {
   let expr_ = [expr[0]]
   for (let i=1, l=expr.length; i<l; i++) {
     let x = expr[i], xa = x[0][2]
-    //x[0].length = 2; // NB removes annotation from the subexpression
+    // log ('bindDefs', x[0])
     if (xa && xa.name != null) {
-      x = [['scope', xa.name], x, [N[T.component], xa.name]]
+      x = [[T.letin, xa.name], x, [[T.component, xa.name]]]
     }
     expr_[i] = x
   }
@@ -117,9 +71,8 @@ const _escapes = {
 
 function preEval (...expr) {
   const [[tag, data], x, y] = expr
-  const xa = (x && x[0] && x[0][2])||{} // putting annotations on the operator ;)
-  expr[0][0] = N[expr[0][0] >> 8] // for development/ pretty print
-  switch (tag >> 8) {
+  const xa = (x && x[0] && x[0][2]) // putting annotations on the operator ;)
+  switch (tag) {
 
     // ### Tree operands
 
@@ -133,52 +86,53 @@ function preEval (...expr) {
     // ### Tree operators
 
     case T.append: // flatten nested `+` to n-ary `+`
-      return _assoc (N[T.append], defbound (expr))
+      return _assoc (T.append, bindDefs (expr))
 
     case T.orelse: // flatten nested `|` to n-ary `|`
-      return _assoc (N[T.orelse], defbound (expr))
+      return _assoc (T.orelse, bindDefs (expr))
 
-    case T.declare: 
+    case T.declare:
+      // TODO collect all
       const ya = y[0][2]||{}
       const lib = 'lib' in ya ? ya.lib : {}
-      if (ya.name != null) lib[ya.name] = y
-      if (xa.name != null) lib[xa.name] = x
-      return ann (y, { lib })
+      if (ya) lib[ya.name] = y
+      if (xa) lib[xa.name] = x
+      return [[T.withlib, lib], y]
 
     case T.iter:
-      return defbound (expr)
+      return bindDefs (expr)
 
     case T.test:
-      return ann (expr, { name:xa?xa.name:null })
+      x[0].length = 2
+      return xa ? ann (expr, { name:xa.name }) : expr
     
-    case T.def: 
+    case T.def:
       if (xa && xa.name != null)
-        throw new SyntaxError (`expression ${data} is already named ${xa.name}`)
+        throw new Error (`expression ${data} is already named ${xa.name}`)
       return ann (x, { name:data })
 
     case T.descend:
-      const op = [N[T.descend], data, { name:xa?xa.name:null }]
-      return [op, x, defbound (y)]
+      const op = [T.descend, data]
+      if (xa) op[2] = { name:xa.name }
+      return [op, x, bindDefs (y)]
 
     case T.value: // Split e.g. %foo into %~foo
-      x[0].length = 2
       if (data.length > 1) 
-        return [[N[T.bind], '~' + data.substr(1), xa], [[N[T.value], '%'], x]]
-      else return ann (expr, { name:xa?xa.name:null })
+        return [[T.bind, '~' + data.substr(1), xa], [[T.value, '%'], x]]
+      else return xa ? (x[0].length = 2, ann (expr, { name:xa.name })) : expr
 
     case T.key:
-    case T.bind: // REVIEW should bind distribute over defs or not?
+    case T.bind: // REVIEW should bind distribute over defs and/ or descend or not?
 
     // REVIEW, disallow the following on non-elements? how? all?
-    // I think it makes sense to restrict that, yes, to 'elem-heads'?
     case T.klass:
     case T.hash:
     case T.Attr: // 'add attributes': higher order postfix operator
-      x[0].length = 2
-      return ann (expr, { name:xa?xa.name:null })
+      return xa ? (x[0].length = 2, ann (expr, { name:xa.name })) : expr
 
     case T.Text: // 'append-text': higher order postfix operator
-      return ann ([[N[T.Text], x], y], { name:xa?xa.name:null })
+      const _expr = [[T.Text, x], y]
+      return xa ? (x[0].length = 2, ann (_expr, { name:xa.name })) : _expr
 
 
     // ### Attribute operands (leafs)
@@ -188,19 +142,19 @@ function preEval (...expr) {
       return expr
 
     case T.Quoted: // evaluate quoted values (group)
-      return [N[T.Quoted], x]
+      return [T.Quoted, x]
 
     // ### Attribute  operators (assign and juxtapose)
 
     case T.attrNext: // convert to n-ary
-      return _assoc (N[T.attrNext], expr)
+      return _assoc (T.attrNext, expr)
 
     case T.assign: {
       // Assert types
       const ya = y[0][2]
-      if (x[0][0] !== N[T.attrName]) throw new TypeError ('Lhs of `=` must be attrName, got '+x.type)
-      if (y[0][0] === N[T.assign])   throw new TypeError ('Rhs of `=` must not be an assignment')
-      return [[N[T.assign], x[0][1]], y] // REVIEW rewrap attrNames in value) position
+      if (x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be attrName, got '+x.type)
+      if (y[0][0] === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
+      return [[T.assign, x[0][1]], y] // REVIEW rewrap attrNames in value) position
     }
 
     // ### Strings (Text/ Quoted)
@@ -213,8 +167,8 @@ function preEval (...expr) {
 
     // ### Default branch / Error
     default:
-      throw new Error (`preEval: unknown operator type: ${tag} ${tag>>8} ${N[tag>>8]}`)
+      throw new Error (`preEval: unknown operator type: ${tag} ${N[tag]}`)
   }
 }
 
-module.exports = { fold, preEval }
+module.exports = { preEval, bindDefs }

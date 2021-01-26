@@ -10,4 +10,8 @@ TM_RUN_TARGET = ../test/domexp-test.js
 TM_RUN_TARGET = ../test/parser-test.js
 
 [src/compile.js]
-TM_RUN_TARGET = ../test/compile-test.js
+#TM_RUN_TARGET = ../test/compile-test.js
+TM_RUN_TARGET = ../test/eval-test.js
+
+[src/eval.js]
+TM_RUN_TARGET = ../test/eval-test.js
