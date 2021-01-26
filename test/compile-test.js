@@ -1,6 +1,7 @@
 const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
-const { fold, preEval } = require ('../src/compile.js')
+const { preEval } = require ('../src/compile.js')
+const { fold } = require ('../src/fold.js')
 
 // Test
 // ====
@@ -30,8 +31,9 @@ var sample = 'div@a %~name'
 var sample = 'div %~name @a'
 var sample = '(a@A:a | b:b@B | c) @foo'
 var sample = 'form@login > (label > span "name" + input[name=name]) + button "submit"; div@xomething; foo; @login + bar'
-var sample = '(div@a) + b'
 var sample = '@a'
+var sample = '(div@a) + b'
+// var sample = `form@f1; form@f2; foo`
 
 log (sample, '\n===============\n')
 const tree = parse (sample)

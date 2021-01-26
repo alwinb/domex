@@ -36,20 +36,23 @@ const tokens = {
   attrNext:  token   `.{0}(?![[=])` (INFIX, 0),
   attrEnd:   token    `\]` (END),
 
-  klass:     token   `[.] [a-zA-Z]+` (POSTFIX, 9),
-  hash:      token   `[#] [a-zA-Z]+` (POSTFIX, 9),
-  def:       token   `[@] [a-zA-Z]+` (POSTFIX, 9),
+  klass:     token   `[.] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  hash:      token   `[#] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  def:       token   `[@] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
 
-  test:      token   `[:] [a-zA-Z]+` (POSTFIX, 9),
-  bind:      token   `[~] [a-zA-Z]+` (POSTFIX, 9),
-  iter:      token   `[*] [a-zA-Z]*` (POSTFIX, 9),
-  value:     token   `[%] [a-zA-Z]*` (POSTFIX, 9),
+  test:      token   `[:] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  bind:      token   `[~] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  iter:      token   `[*] [a-zA-Z0-9]*` (POSTFIX, 9),
+  value:     token   `[%] [a-zA-Z0-9]*` (POSTFIX, 9),
   key:       token   `[$]` (POSTFIX, 9),
 
-  // Additional tags to be used by compile and eval
-  text: tokenType (),
-  void: tokenType ()
-  
+  // Additional tags,
+  // used by compile and eval
+
+  text:      tokenType (),
+  void:      tokenType (),
+  letin:     tokenType (),
+  withlib:   tokenType (),
 }
 
 const T = tokens
@@ -113,10 +116,10 @@ const signature = {
 
 const signatures = hoop.compile (signature)
 
-function parse (input) {
+function parse (input, apply) {
   const S0 = signatures.Tree.Before.next ('(')
   const E0 = signatures.Tree.After.next (')')
-  const p = new hoop.Parser (signatures, S0, E0)
+  const p = new hoop.Parser (signatures, S0, E0, apply)
   return p.parse (input)
 }
 

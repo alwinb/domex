@@ -8,3 +8,6 @@ TM_RUN_TARGET = ../test/domexp-test.js
 
 [{src/hoop2.js,src/grammar.js}]
 TM_RUN_TARGET = ../test/parser-test.js
+
+[src/compile.js]
+TM_RUN_TARGET = ../test/compile-test.js
