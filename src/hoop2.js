@@ -124,6 +124,7 @@ function Lexer (ruleName, rule, grammar) {
 // -------
 
 const PRE = Symbol ('PRE '), POST = Symbol ('POST')
+const _ER = /([^\n]{0,80})/ys
 
 function Parser (lexers, S0, E0, apply = (...args) => args) { 
   let position  = 0     // current input position
@@ -155,21 +156,21 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     if (group == null && token == null) {
       const regex = state === PRE ? lexer.Before : lexer.After
       token = regex.next (input, position)
-
       if (!token) {
         const err = position < input.length && regex.lastIndex < position
         const eof = !err
         if (err || eof && state === PRE) {
           const p = Math.max (lastnl, position-80)
-          const snip = input.substr (p, 80)
+          _ER.lastIndex = lastnl
+          const snip = _ER.exec (input)[1]
           throw new SyntaxError (`Invalid DOM expression. ` +
             `At line ${line}:${position - lastnl}:\n\n` +
             `\t\t${snip}\n` +
-            `\t\t${'^'.padStart(position - p + 1)}`)
+            `\t\t${'^'.padStart(position - lastnl + 1)}`)
         }
         token = E0
       }
-      else if (token.value === '\n')
+      else if (token[1] === '\n')
         (line++, lastnl = position + 1)
       position = regex.lastIndex
     }
