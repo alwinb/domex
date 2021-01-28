@@ -207,7 +207,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
       context.pop ()
       token = [[lexer.type, opener[1] + token[1]], builds[0]];
       group = token
-      if (!context.length) return token;
+      if (!context.length) return apply (...token)
       // add precedence info
       if (lexer.type & (PREFIX | INFIX | POSTFIX)) token.push (lexer.precedence)
       ;({ opener, ops, builds, lexer } = context [context.length-1])
