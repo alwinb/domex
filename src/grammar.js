@@ -14,6 +14,8 @@ const tokens = {
   elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
   attrName:  token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
   component: token `@ [a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
+  value:     token   `[%] [a-zA-Z0-9]*` (LEAF),
+  key:       token   `[$]` (LEAF),
 
   start:     token   `[(]` (START),
   end:       token   `[)]` (END),
@@ -33,18 +35,16 @@ const tokens = {
 
   attrStart: token    `\[` (START),
   assign:    token   `[=]` (INFIX, 9),
-  attrNext:  token   `.{0}(?![[=])` (INFIX, 0),
+  collate:  token   `.{0}(?![[=])` (INFIX, 0),
   attrEnd:   token    `\]` (END),
 
-  klass:     token   `[.] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  class:     token   `[.] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   hash:      token   `[#] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   def:       token   `[@] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
 
   test:      token   `[:] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   bind:      token   `[~] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   iter:      token   `[*] [a-zA-Z0-9]*` (POSTFIX, 9),
-  value:     token   `[%] [a-zA-Z0-9]*` (POSTFIX, 9),
-  key:       token   `[$]` (POSTFIX, 9),
 
   // Additional tags,
   // used by compile and eval
@@ -69,12 +69,12 @@ const signature = {
     name: 'Tree',
     start: T.start,
     skip: [ T.space, T.comment, T.newline ],
-    operands: [ T.elem, T.component, $ => $.Tree ],
+    operands: [ T.elem, T.component, $ => $.Tree, $ => $.String, T.value, T.key ],
     operators: [
       T.descend, T.append, T.orelse, T.declare,
-      $ => $.Attr, $ => $.Text,
-      T.klass, T.hash, T.def,
-      T.test, T.bind, T.iter, T.value, T.key ],
+      $ => $.Attr,
+      T.class, T.hash, T.def,
+      T.test, T.bind, T.iter ],
     end: T.end,
   },
 
@@ -84,13 +84,13 @@ const signature = {
     precedence: 9,
     start: T.attrStart,
     skip: [ T.space, T.comment, T.newline ],
-    operands: [ T.attrName, T.value, T.key, $ => $.Quoted ],
-    operators: [ T.assign, T.attrNext ],
+    operands: [ T.attrName, T.value, T.key, $ => $.String ],
+    operators: [ T.assign, T.collate ],
     end: T.attrEnd,
   },
 
-  Quoted: {
-    name: 'Quoted',
+  String: {
+    name: 'String',
     role: LEAF,
     start: T.strStart,
     operands: [ T.strChars, T.escape, T.hexescape, T.empty ],
@@ -98,16 +98,6 @@ const signature = {
     end: T.strEnd,
   },
 
-  Text: {
-    name: 'Text',
-    role: POSTFIX,
-    precedence: 9,
-    // same as Quoted
-    start: T.strStart,
-    operands: [ T.strChars, T.escape, T.hexescape, T.empty ],
-    operators: [ T.strCat ],
-    end: T.strEnd,
-  }
 }
 
 
