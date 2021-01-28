@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
-const { preEval } = require ('../src/compile.js')
+const { preEval, bindDefs } = require ('../src/compile.js')
 const { fold } = require ('../src/fold.js')
 
 // Test
@@ -8,37 +8,54 @@ const { fold } = require ('../src/fold.js')
 
 //var sample = 'a + b [foo="bar\\nbee"] + div @host'
 //var sample = 'a "foo\\nbar"; form @b > c@d; e@f'
-var sample = 'p "hello\\nworld" > (a + b)'
-var sample = 'a[d="e\\nf"]'
-var sample = 'a[d=f=g]'
-var sample = 'a[d=f]' // TODO should probably wrap f
-var sample = 'a[b =c d="e\\n" f g]'
-var sample = 'a + b + g + (c | d | e) + e + f'
-var sample = 'a:x | b:y | c'
-var sample = '(a + b + c)*name'
-var sample = 'a; b; c'
-var sample = 'a[a=b c=d f=%]'
-var sample = 'a[d=%]'
-// var sample = '(form @login #login > input + button) @foo' // should throw
-var sample = '(form @login #login > input + button)* @foo'
-var sample = '(a@A | b@B | c) @foo'
-var sample = 'a@A:a > b:b@B'
-var sample = 'div "ab\\u0020c"'
-var sample = 'div %name'
-var sample = 'div@a %'
-var sample = 'div % @a'
-var sample = 'div@a %~name'
-var sample = 'div %~name @a'
-var sample = '(a@A:a | b:b@B | c) @foo'
-var sample = 'form@login > (label > span "name" + input[name=name]) + button "submit"; div@xomething; foo; @login + bar'
-var sample = '@a'
-var sample = '(div@a) + b'
-// var sample = `form@f1; form@f2; foo`
+var samples = [
+  'p > "hello\\nworld" + a + b',
+  'a[d="e\\nf"]',
+  // 'a[d=f=g]', // must throw
+  'a[d=f]', // TODO should probably wrap f, or dsallow
+  'a[b =c d="e\\n" f g]',
+  'a + b + g + (c | d | e) + e + f',
+  'a:x | b:y | c',
+  '(a + b + c)*name',
+  'a; b; c',
+  'a[a=b c=d f=%]',
+  // '(form @login #login > input + button) @foo', // must throw
+  '(form @login #login > input + button)* @foo',
+  '(a@A | b@B | c) @foo',
+  'a@A:a > b:b@B',
+  'div > "ab\\u0020c"',
+  'div > %name',
+  'div@a > %',
+  'div@a > %~name',
+  '(a@A:a | b:b@B | c) @foo',
+  'form@login > (label > span > "name" + input[name=name]) + button > "submit"; div@xomething; foo; @login + bar',
+  '@a',
+  '(div@a) + b',
+  `form@f1; form@f2; foo`,
+  'span:number:selected > %',
+  'a[d=%]',
+  '"test" @s', // I guess that's ok
+  'span:number > %',
+  '(span:number > %)*',
+  'span:number* > %',
+  'span[a=b c=d]* > %',
+  'span:number > % | span:string > %',
+  'div',
+  '(div:foo)',
+  '(div:foo@d)',
+  '(div)@d',
+]
+
+var sample = samples[samples.length-1]
+
+
+//for (sample of samples) {
 
 log (sample, '\n===============\n')
 const tree = parse (sample)
 // log (JSON.stringify (tree))
 
-var folded = fold (tree, preEval)
+var folded = bindDefs (fold (tree, preEval))
 log (JSON.stringify (folded, 0, 2))
 
+//}

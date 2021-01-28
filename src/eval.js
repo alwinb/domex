@@ -2,7 +2,8 @@ const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
 const { tokenTypes:T } = require ('./grammar')
 
-// modified hylomorphism
+// This is a standard hylomorphism that has been modified to
+// short-circuit on the the '|' operator. 
 
 function refold (seed, unfold, apply = (...args) => args) {
   const root = [0, unfold (seed)]
@@ -27,13 +28,9 @@ function refold (seed, unfold, apply = (...args) => args) {
         RET = frame
         stack.length--
       }
-      else if (op[0] === T.orelse && branch && coterm[branch][0][0] !== T.void) { // NB hacked in special form '|'
-        // If in an 'orelse' and the previous branch did not return void,
-        // this then replaces the stack frame with only that branch as result.
-        // A hack, but it works for now
+      else if (op[0] === T.orelse && branch && coterm[branch][0][0] !== T.void) {
         const nonvoid = coterm[branch]
         stack[stack.length-1] = [1, [op, nonvoid]]
-        // So, review this...
       }
       else {
         RET = null
@@ -49,59 +46,65 @@ function refold (seed, unfold, apply = (...args) => args) {
   return apply (...RET[1])
 }
 
+
 // unfold: takes an expression and its input data
 // and returns (for now) an expression. 
 
 function unfold (seed)  {
   let { expr, data, key, lib = {} } = seed
-  let op = expr[0]
-  // log ('unfold', op)
-
-  if (typeof op === 'number') // tagged constant
+  if (typeof expr[0] === 'number') // tagged constant
     return expr
 
-  if (op[0] === T.component) {
+  const op = expr[0], tag = op[0]
+  // log ('unfold', op, '\n', expr[1], '\n', expr[2], '\n')
+
+  if (tag === T.component) {
     const n = op[1]
     // log ('deref', n, lib[n])
     // TODO detect cycles, but first now, implement the conditional
     if (!(n in lib)) throw new Error ('Unknown reference ' + op[1])
     return unfold ({ expr:lib[n], data, key, lib })
   }
+  
+  if (tag === T.text) {
+    return expr
+  }
 
-  if (op[0] === T.letin) {
+  if (tag === T.key) {
+    return [[T.text, String (key)]]
+  }
+
+  if (tag === T.value) {
+    return [[T.text, String (data)]]
+  }
+
+  if (tag === T.letin) {
     const scope = Object.create (lib)
     scope [op[1]] = expr[1]
     // log ('letin', op, scope, expr[2])
     return unfold ({ expr:expr[2], data, key, lib:scope })
   }
 
-  if (op[0] === T.bind) {
+  if (tag === T.bind) {
     key = op[1].substr(1)
     data = data[key]
     return unfold ({ expr:expr[1], data, key, lib })
   }
 
-  if (op[0] === T.test) {
+  if (tag === T.test) {
     let test = op[1].substr(1)
     let _type = data === null ? 'null' : Array.isArray (data) ? 'array' : typeof data
     if (_type === 'object' && data.type) _type = data.type
-    // log ('test', expr, data, _type, test === _type)
     if (test !== _type) return [[T.void, 'ε']]
     else return unfold ({ expr: expr[1], data, key, lib })
   }
 
-  if (op[0] === T.iter) {
+  if (tag === T.iter) {
     const _expr = [[T.append]]
     for (let [key,v] of Object.entries (data)) // TODO proper incremental analyse 
       _expr[_expr.length] = { expr:expr[1], data:v, key, lib }
     return _expr
   }
-
-  if (op[0] === T.value)
-    op = [T.text, String (data)]
-
-  else if (op[0] === T.key)
-    op = [T.text, String (key)]
 
   expr = expr.map (_ => ({ expr:_, data, key, lib }))
   expr[0] = op
@@ -109,8 +112,49 @@ function unfold (seed)  {
 }
 
 
+// foldup evaluates _static_ expressions
+// ie. expressions without def, decare, test, key, value, iter, letin
+// it evaluates orelse nodes (ao). 
+// can be easily modifier to return a DOM
+
+function foldup (op, ...args) {
+  const [tag, data] = op
+  const [x, y] = args
+  const xop = x && x[0][0]
+  switch (tag) {
+    case T.void:
+    case T.elem:
+    case T.text:
+      return [op]
+
+    case T.append: {
+      const els = args .filter (_ => _ && _[0][0] !== T.void) 
+      return !els.length ? [[T.void, 'ε']] : els.length === 1 ? els[0] : [[T.append, '+'], ...els]
+    }
+
+    case T.orelse: {
+      const els = args .filter (_ => _ && _[0][0] !== T.void) 
+      return els.length ? els[0] : [[T.void, 'ε']]
+    }
+
+    case T.descend: 
+      return xop === T.void ? x : [op, x, y]
+
+    case T.class:
+    case T.hash:
+    case T.Attr:
+      return xop === T.void ? x : [op, x]
+
+    default:
+      log (op, x, y)
+      return [op, x, y]
+      throw new TypeError ('eval.apply: unknown ast node')
+  }
+}
+  
+  
 function eval (expr, data) {
-  return refold ({ expr, data }, unfold)
+  return refold ({ expr, data }, unfold, foldup)
 }
 
 // Exports

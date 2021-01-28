@@ -14,7 +14,7 @@ for (let k in tokenTypes) {
   const t = T[k]
   typeNames[t] = k
 }
-// log (tokenTypes, T)
+// log (T)
 
 // helper: assoc -- expr may be n-ary,
 // collates immediate subexpressions with tag t
@@ -29,30 +29,19 @@ function _assoc (t, expr) {
   return nary
 }
 
-function ann (expr, a) {
-  const e = [...expr]
-  e[0] = [...e[0]]
-  e[0][2] = a
-  return e
-}
+// Applies the 'stack of postfix operators' ops
+// and if named, add a binary 'let' operator akin to
+// let (name = expr1) in expr2
 
-// So this adds a binary 'let' operator akin to
-// let name = expr1 in expr2
-
-// This is like def, but defs are removed by the compiler
-// and converted to lets -- indeed defs are distributed upwards
-
-function bindDefs (expr) {
-  let expr_ = [expr[0]]
-  for (let i=1, l=expr.length; i<l; i++) {
-    let x = expr[i], xa = x[0][2]
-    // log ('bindDefs', x[0])
-    if (xa && xa.name != null) {
-      x = [[T.letin, xa.name], x, [[T.component, xa.name]]]
-    }
-    expr_[i] = x
+function bindDefs ({ expr, ops, name }) {
+  if (ops) { let o, l
+    for (o = ops; o[l = o.length - 1] != null; o = o[l]);
+    o[l] = expr
+    expr = ops
   }
-  return expr_
+  if (name != null)
+    expr = [[T.letin, name], expr, [[T.component, name]]]
+  return expr
 }
 
 
@@ -70,6 +59,7 @@ const _escapes = {
 // -----------
 
 function preEval (...expr) {
+  // log ('preEval', expr)
   const [[tag, data], x, y] = expr
   const xa = (x && x[0] && x[0][2]) // putting annotations on the operator ;)
   switch (tag) {
@@ -77,87 +67,78 @@ function preEval (...expr) {
     // ### Tree operands
 
     case T.Tree: // replace `()` group with contents
-      return x
+      return x // { expr: bindDefs (x) }
+
+    case T.String:
+      return { expr:[[T.text, x]], ops:null, name:null }
 
     case T.elem:
+    case T.key:
     case T.component:
-      return expr
+      return { expr, ops:null, name:null }
 
-    // ### Tree operators
+    case T.value: { // Split e.g. %foo into %~foo
+      const ref = [[T.value, '%']]
+      let ops = data.length > 1 ? [[T.bind, '~' + data.substr(1)], null] : null
+      return { expr:ref, ops, name:null }
+    }
+
+    // ### Tree operators (infix)
 
     case T.append: // flatten nested `+` to n-ary `+`
-      return _assoc (T.append, bindDefs (expr))
+      return { expr: [expr[0], bindDefs(x), bindDefs(y)] } // FIXME assoc
 
     case T.orelse: // flatten nested `|` to n-ary `|`
-      return _assoc (T.orelse, bindDefs (expr))
+      return { expr: [expr[0], bindDefs(x), bindDefs(y)] } // FIXME assoc
 
-    case T.declare:
-      // TODO collect all
+    case T.declare: // TODO/ FIXME
       const ya = y[0][2]||{}
       const lib = 'lib' in ya ? ya.lib : {}
       if (ya) lib[ya.name] = y
       if (xa) lib[xa.name] = x
       return [[T.withlib, lib], y]
 
+    case T.descend: {
+      const op = [T.descend, data]
+      const _expr = [op, x.expr, bindDefs (y)]
+      return { expr: bindDefs ({ ops:x.ops, expr:_expr, name:x.name }) }
+    }
+
+    // ### Tree operators (postfix)
+
+    case T.def:
+      if (x.name != null)
+        throw new Error (`expression ${data} is already named ${name}`)
+      return { name:data, expr:x.expr, ops:x.ops }
+
     case T.iter:
-      return bindDefs (expr)
+      return { ops:[expr[0], x.ops], name:null, expr:x.expr }
 
     case T.test:
-      x[0].length = 2
-      return xa ? ann (expr, { name:xa.name }) : expr
-    
-    case T.def:
-      if (xa && xa.name != null)
-        throw new Error (`expression ${data} is already named ${xa.name}`)
-      return ann (x, { name:data })
-
-    case T.descend:
-      const op = [T.descend, data]
-      if (xa) op[2] = { name:xa.name }
-      return [op, x, bindDefs (y)]
-
-    case T.value: // Split e.g. %foo into %~foo
-      if (data.length > 1) 
-        return [[T.bind, '~' + data.substr(1), xa], [[T.value, '%'], x]]
-      else return xa ? (x[0].length = 2, ann (expr, { name:xa.name })) : expr
-
-    case T.key:
-    case T.bind: // REVIEW should bind distribute over defs and/ or descend or not?
-
-    // REVIEW, disallow the following on non-elements? how? all?
-    case T.klass:
+    case T.class: // REVIEW, disallow the following on non-elements? how? all?
     case T.hash:
+    case T.bind: // REVIEW should bind distribute over defs or not?
+      return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
+
     case T.Attr: // 'add attributes': higher order postfix operator
-      return xa ? (x[0].length = 2, ann (expr, { name:xa.name })) : expr
+      return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
 
-    case T.Text: // 'append-text': higher order postfix operator
-      const _expr = [[T.Text, x], y]
-      return xa ? (x[0].length = 2, ann (_expr, { name:xa.name })) : _expr
+    // ### Attributes
 
-
-    // ### Attribute operands (leafs)
-
-    // NB may also be T.key or T.value
     case T.attrName:
       return expr
 
-    case T.Quoted: // evaluate quoted values (group)
-      return [T.Quoted, x]
+    case T.collate: // convert to n-ary
+      return _assoc (T.collate, expr)
 
-    // ### Attribute  operators (assign and juxtapose)
-
-    case T.attrNext: // convert to n-ary
-      return _assoc (T.attrNext, expr)
-
-    case T.assign: {
-      // Assert types
+    case T.assign: { // assert additional type constraints
       const ya = y[0][2]
       if (x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be attrName, got '+x.type)
       if (y[0][0] === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
       return [[T.assign, x[0][1]], y] // REVIEW rewrap attrNames in value) position
     }
 
-    // ### Strings (Text/ Quoted)
+    // ### Strings
 
     case T.strChars:  return data
     case T.escape:    return _escapes [data]
@@ -165,7 +146,6 @@ function preEval (...expr) {
     case T.hexescape: return String.fromCodePoint (parseInt (data.substr(2), 16))
     case T.strCat:    return x + y
 
-    // ### Default branch / Error
     default:
       throw new Error (`preEval: unknown operator type: ${tag} ${N[tag]}`)
   }
