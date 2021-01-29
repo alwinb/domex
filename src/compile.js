@@ -16,19 +16,6 @@ for (let k in tokenTypes) {
 }
 // log (T)
 
-// helper: assoc -- expr may be n-ary,
-// collates immediate subexpressions with tag t
-
-function _assoc (t, expr) {
-  const [_, x, y] = expr
-  const nary = [expr[0]]
-  if (x[0][0] === t) nary.push (...x.slice(1))
-  else nary.push (x)
-  if (y[0][0] === t) nary.push (...y.slice(1))
-  else nary.push (y)
-  return nary
-}
-
 // Applies the 'stack of postfix operators' ops
 // and if named, add a binary 'let' operator akin to
 // let (name = expr1) in expr2
@@ -43,7 +30,6 @@ function bindDefs ({ expr, ops, name }) {
     expr = [[T.letin, name], expr, [[T.component, name]]]
   return expr
 }
-
 
 const _escapes = {
   '\\/': '/',
@@ -85,11 +71,12 @@ function preEval (...expr) {
 
     // ### Tree operators (infix)
 
-    case T.append: // flatten nested `+` to n-ary `+`
-      return { expr: [expr[0], bindDefs(x), bindDefs(y)] } // FIXME assoc
-
-    case T.orelse: // flatten nested `|` to n-ary `|`
-      return { expr: [expr[0], bindDefs(x), bindDefs(y)] } // FIXME assoc
+    case T.append:
+    case T.orelse: {
+      const _expr = [expr[0]]
+      for (let i=1, l=expr.length; i<l; i++) _expr[i] = bindDefs (expr[i])
+      return { expr: _expr }
+    }
 
     case T.declare: // TODO/ FIXME
       const ya = y[0][2]||{}
@@ -129,7 +116,7 @@ function preEval (...expr) {
       return expr
 
     case T.collate: // convert to n-ary
-      return _assoc (T.collate, expr)
+      return expr
 
     case T.assign: { // assert additional type constraints
       const ya = y[0][2]

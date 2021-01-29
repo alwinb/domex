@@ -106,9 +106,10 @@ function unfold (seed)  {
     return _expr
   }
 
-  expr = expr.map (_ => ({ expr:_, data, key, lib }))
-  expr[0] = op
-  return expr
+  const _expr = [op]
+  for (let i=1, l=expr.length; i<l; i++)
+    _expr[i] = { expr:expr[i], data, key, lib }
+  return _expr
 }
 
 
@@ -122,32 +123,28 @@ function foldup (op, ...args) {
   const [x, y] = args
   const xop = x && x[0][0]
   switch (tag) {
-    case T.void:
-    case T.elem:
-    case T.text:
+
+    case T.void: case T.elem: case T.text: 
       return [op]
 
     case T.append: {
-      const els = args .filter (_ => _ && _[0][0] !== T.void) 
+      const els = args .filter (_ => _ && _[0][0] !== T.void)
       return !els.length ? [[T.void, 'ε']] : els.length === 1 ? els[0] : [[T.append, '+'], ...els]
     }
 
     case T.orelse: {
-      const els = args .filter (_ => _ && _[0][0] !== T.void) 
+      const els = args .filter (_ => _ && _[0][0] !== T.void)
       return els.length ? els[0] : [[T.void, 'ε']]
     }
 
-    case T.descend: 
+    case T.descend:
       return xop === T.void ? x : [op, x, y]
 
-    case T.class:
-    case T.hash:
-    case T.Attr:
+    case T.class: case T.hash: case T.Attr:
       return xop === T.void ? x : [op, x]
 
     default:
-      log (op, x, y)
-      return [op, x, y]
+      log ('eval.apply: unknown ast node', op, x, y)
       throw new TypeError ('eval.apply: unknown ast node')
   }
 }

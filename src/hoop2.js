@@ -20,13 +20,13 @@ const log = console.log.bind (console)
 // a grammar format that is supported by the hoop parser. 
 
 let typeId = 1
-const roleMask = 0b11111111
+const roleMask = 0b111111111 // nine bits
 const typeMask = ~roleMask
 
 const token = (...source) => (role, ...info) =>
-  [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 8) | role, ...info]
+  [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 9) | role, ...info]
 
-const tokenType = () => ['', typeId++ << 8] // HACK to produce typeIds, for now
+const tokenType = () => ['', typeId++ << 9] // HACK to produce typeIds, for now
 
 // ### Tokens Roles
 // Using bitflags for the token roles. 
@@ -35,7 +35,7 @@ const FlagsOnto = (map = {}, start = 0) =>
   new Proxy ({}, { get:($,k) => map [k] || (map[k] = 1 << start++) })
 
 const Roles = { }
-const { START, END, SKIP, LEAF, INFIX, PREFIX, POSTFIX, GROUP } = FlagsOnto (Roles)
+const { START, END, SKIP, LEAF, ASSOC, INFIX, PREFIX, POSTFIX, GROUP } = FlagsOnto (Roles)
 
 // ### Lexer compiler
 
@@ -80,7 +80,7 @@ function Lexer (ruleName, rule, grammar) {
   const { role = LEAF, start, end,
     skip = [], infix = [], operands = [], operators = [],
     precedence } = rule
-  const type = (typeId++ << 8) | role | GROUP
+  const type = (typeId++ << 9) | role | GROUP
 
   for (let x of skip) {
     befores.push ([x[0], SKIP])
@@ -110,7 +110,7 @@ function Lexer (ruleName, rule, grammar) {
 
   this.name = ruleName
   this.type = type
-  if (type & (PREFIX | INFIX | POSTFIX))
+  if (type & (PREFIX | INFIX | ASSOC | POSTFIX))
     this.precedence = precedence
 
   Object.defineProperties (this, {
@@ -142,7 +142,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 
   /* where */
 
-  function precedes (tok1, tok2) { // type, value, info=precedence
+  function precedes (tok1, tok2) { // [type, value, precedence]
     // log (tok1, tok2)
     const p1 = tok1[2], p2 = tok2[2]
     return p1 > p2 ? true
@@ -177,7 +177,8 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
   
     // ### Parser
 
-    const role = group ? group[0][0] : token[0] // type|role, value, info
+    // token :: [type+role, value, info]
+    const role = group ? group[0][0] : token[0] 
     const info = group ? group[0][2] : token[2]
 
     /*
@@ -196,20 +197,21 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
       const useStack = (role & END) || precedes (op, token)
       if (!useStack) break
       ops.length--
-      const arity = op[0] & INFIX ? 2 : 1
+      const arity = op[3]
       const i = builds.length - arity
-      op.length-- // remove precedence info
+      op.length = 2 // remove precedence/ arity info
       builds[i] = apply (op, ...builds.splice (i, arity))
     }
 
     // END - Collapses the shunting yard into a 'token'
+
     if (role & END) {
       context.pop ()
       token = [[lexer.type, opener[1] + token[1]], builds[0]];
       group = token
       if (!context.length) return apply (...token)
       // add precedence info
-      if (lexer.type & (PREFIX | INFIX | POSTFIX)) token.push (lexer.precedence)
+      if (lexer.type & (PREFIX | INFIX | ASSOC | POSTFIX)) token.push (lexer.precedence)
       ;({ opener, ops, builds, lexer } = context [context.length-1])
       continue
     }
@@ -232,15 +234,21 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
       state = POST
     }
 
-    else if (role & (PREFIX | INFIX)) { // Err if state is Before
-      ops[ops.length] = token //, role, arity: role & INFIX ? 2 : 1 }
+    else if (ops.length && (role & ASSOC) && token[0] === ops[ops.length-1][0]) {
+      ops[ops.length-1][3]++
+      state = PRE
+    }
+
+    else if (role & (PREFIX | INFIX | ASSOC)) { // Err if state is Before
+      ops[ops.length] = token // op :: [type+role, value, precedence, arity]
+      token[3] = token[0] & PREFIX ? 1 : 2 // arity
       state = PRE
     }
 
     else if (role & POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
-      token.length-- // remove precedence info
-      if (typeof token[0] !== 'number') // NB flattening HOOP here
+      token.length = 2 // remove precedence/ arity info
+      if (typeof token[0] !== 'number') // NB flattening HOOP
         builds[i] = apply (...token, builds[i])
       else
         builds[i] = apply (token, builds[i])

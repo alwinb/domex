@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { signatures, parse } = require ('../src/grammar.js')
-const { preEval } = require ('../src/compile.js')
+const { bindDefs, preEval } = require ('../src/compile.js')
 
 /*
 // log (JSON.stringify (parse ('a > b + c?test')))
@@ -17,6 +17,7 @@ log (JSON.stringify (parse (sample), null, 2))
 var sample = 'a@one [foo="bee"] > (b | c) +d ; two@a > three'
 var sample = 'div > "foo" + %'
 var sample = 'div > "foo" + %name'
-
+var sample = 'foo + bar + baz | bee@a +  buzz + bazz | boo'
+var sample = 'foo[bar=bee buzz= bazz bo]'
 log (sample, '\n=========================')
-log (JSON.stringify (parse (sample, preEval), null, 2))
+log (JSON.stringify (bindDefs(parse (sample, preEval)), null, 2))

@@ -1,7 +1,7 @@
 const log = console.log.bind (console)
 const hoop = require ('./hoop2.js')
 const { token, tokenType } = hoop
-const { START, END, LEAF, PREFIX, INFIX, POSTFIX, SKIP } = hoop.Roles
+const { START, END, LEAF, PREFIX, INFIX, ASSOC, POSTFIX, SKIP } = hoop.Roles
 
 // Grammar for Domex
 // -----------------
@@ -25,17 +25,17 @@ const tokens = {
   escape:    token   `[\\]["/\\bfnrt]` (LEAF),
   hexescape: token   `[\\]u[a-fA-F0-9]{4}` (LEAF),
   empty:     token   `.{0}` (LEAF),
-  strCat:    token   `.{0}` (INFIX, 0),
+  strCat:    token   `.{0}` (INFIX, 0), // could use ASSOC
   strEnd:    token   `["]` (END),
 
   descend:   token   `[>]` (INFIX, 3),
-  append:    token   `[+]` (INFIX, 3),
-  orelse:    token   `[|]` (INFIX, 2),
-  declare:   token   `[;]` (INFIX, 0), // TODO also allow it in postfix pos
+  append:    token   `[+]` (ASSOC, 3),
+  orelse:    token   `[|]` (ASSOC, 2),
+  declare:   token   `[;]` (ASSOC, 0), // TODO also allow it in postfix pos
 
   attrStart: token    `\[` (START),
   assign:    token   `[=]` (INFIX, 9),
-  collate:  token   `.{0}(?![[=])` (INFIX, 0),
+  collate:  token   `.{0}(?![[=])` (ASSOC, 0),
   attrEnd:   token    `\]` (END),
 
   class:     token   `[.] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
