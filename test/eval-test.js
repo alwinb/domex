@@ -2,7 +2,6 @@ const fs = require ('fs')
 const util = require ('util')
 const log = console.log.bind (console)
 const { signatures, parse } = require ('../src/grammar.js')
-const { Parser } = require ('../src/hoop2')
 const { fold, preEval, bindDefs } = require ('../src/compile.js')
 const { refold, eval } = require ('../src/eval.js')
 
@@ -23,6 +22,19 @@ var sample = `
 | dl:object      > di* > (dt > $) + (dd > @json)
 | span           > "unknown"
 ) @json
+`
+
+var sample = `
+( span:number    > %
+| span:string    > %
+| span:null      > "null"
+| span:undefined > "undefined"
+| ul:array       > li* > @json
+| dl:object      > di* > (dt > $) + (dd > @json)
+| span           > "unknown"
+) @json;
+
+body > div > @json
 `
 
 const tree = bindDefs (parse (sample, preEval))

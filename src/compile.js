@@ -79,11 +79,18 @@ function preEval (...expr) {
     }
 
     case T.declare: // TODO/ FIXME
-      const ya = y[0][2]||{}
-      const lib = 'lib' in ya ? ya.lib : {}
-      if (ya) lib[ya.name] = y
-      if (xa) lib[xa.name] = x
-      return [[T.withlib, lib], y]
+      const lib = Object.create (null)
+      const l = expr.length-1
+      for (let i=1; i<l; i++) {
+        const _expr = bindDefs (expr[i])
+        if (_expr[0][0] === T.letin) {
+          const name = _expr[0][1]
+          lib[name] = _expr [1] // store the body only
+        }
+        // TODO throw on name clashes
+      }
+      const last = expr[l]
+      return { expr: [[T.withlib, lib], last.expr], name:last.name, ops:last.ops } 
 
     case T.descend: {
       const op = [T.descend, data]
@@ -109,6 +116,8 @@ function preEval (...expr) {
 
     case T.Attr: // 'add attributes': higher order postfix operator
       return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
+      // FIXME there's still problems with bindDefs here, or maybe 
+      // it is due to the signature overlap?
 
     // ### Attributes
 

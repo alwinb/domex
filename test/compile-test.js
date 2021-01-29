@@ -31,7 +31,6 @@ var samples = [
   'form@login > (label > span > "name" + input[name=name]) + button > "submit"; div@xomething; foo; @login + bar',
   '@a',
   '(div@a) + b',
-  `form@f1; form@f2; foo`,
   'span:number:selected > %',
   'a[d=%]',
   '"test" @s', // I guess that's ok
@@ -44,6 +43,7 @@ var samples = [
   '(div:foo)',
   '(div:foo@d)',
   '(div)@d',
+  `form@f1; form@f2; foo`,
 ]
 
 var sample = samples[samples.length-1]
@@ -53,7 +53,7 @@ var sample = samples[samples.length-1]
 
 log (sample, '\n===============\n')
 const tree = parse (sample)
-// log (JSON.stringify (tree))
+log (JSON.stringify (tree))
 
 var folded = bindDefs (fold (tree, preEval))
 log (JSON.stringify (folded, 0, 2))

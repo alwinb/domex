@@ -78,6 +78,13 @@ function unfold (seed)  {
     return [[T.text, String (data)]]
   }
 
+  if (tag === T.withlib) {
+    const scope = Object.create (lib)
+    Object.assign (scope, op[1])
+    // log ('withlib', op, scope, expr[1])
+    return unfold ({ expr:expr[1], data, key, lib:scope })
+  }
+
   if (tag === T.letin) {
     const scope = Object.create (lib)
     scope [op[1]] = expr[1]
@@ -144,8 +151,9 @@ function foldup (op, ...args) {
       return xop === T.void ? x : [op, x]
 
     default:
-      log ('eval.apply: unknown ast node', op, x, y)
-      throw new TypeError ('eval.apply: unknown ast node')
+      return [op, x, y]
+      // log ('eval.apply: unknown ast node', op, x, y)
+      // throw new TypeError ('eval.apply: unknown ast node')
   }
 }
   
