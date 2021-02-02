@@ -15,3 +15,6 @@ TM_RUN_TARGET = ../test/compile-test.js
 
 [src/eval.js]
 TM_RUN_TARGET = ../test/eval-test.js
+
+[src/eval-refold.js]
+TM_RUN_TARGET = ../test/eval-refold-test.js

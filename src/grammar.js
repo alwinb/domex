@@ -53,6 +53,7 @@ const tokens = {
   void:      tokenType (),
   letin:     tokenType (),
   withlib:   tokenType (),
+  withdata:  tokenType (),
 }
 
 const T = tokens
