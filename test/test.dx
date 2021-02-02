@@ -1,8 +1,14 @@
 
+// lib
+
 form @login
   > (h1 > "Login")
   + (label > "name" + input [name=name value=%name])
   + (button > "login");
 
+
+// html
+
 html > (head > title > "login")
   + body > @login
+

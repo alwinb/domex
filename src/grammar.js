@@ -34,7 +34,6 @@ const tokens = {
   declare:   token   `[;]` (ASSOC, 0), // TODO also allow it in postfix pos
 
   attrStart: token    `\[` (START),
-  elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
   assign:    token   `[=]` (INFIX, 9),
   collate:   token   `.{0}(?![[=])` (ASSOC, 0),
   attrEnd:   token    `\]` (END),
