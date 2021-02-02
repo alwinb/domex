@@ -235,7 +235,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     }
 
     else if (ops.length && (role & ASSOC) && token[0] === ops[ops.length-1][0]) {
-      ops[ops.length-1][3]++
+      ops[ops.length-1][3]++ // increment the arity
       state = PRE
     }
 
