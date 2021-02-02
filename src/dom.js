@@ -1,3 +1,4 @@
+const { inspect } = require ('util')
 const log = console.log.bind (console)
 const hide = value => ({ writable:1, configurable:1, value })
 const unhide = value => ({ writable:1, configurable:1, enumerable:1, value })
@@ -22,7 +23,7 @@ const voidTags = {
 class El {
 
   static *render (el) {
-    yield* `<${ el.tagName }${ El.renderAttributes (el) }>`
+    yield `<${ el.tagName }${ El.renderAttributes (el) }>`
     if (el.tagName in voidTags) return
     for (let n of el.childNodes)
       if (typeof n === 'string') yield n
@@ -67,6 +68,14 @@ class El {
   append (...args) {
     const n = this.childNodes
     define (this, 'childNodes', unhide (!n.length ? args : n.concat (args)))
+  }
+
+  [inspect.custom]() {
+    const { tagName, attributes, childNodes } = this
+    const r = { tagName }
+    if (attributes.size) r.attributes = attributes
+    if (childNodes.length) r.childNodes = childNodes
+    return r
   }
 
 }
