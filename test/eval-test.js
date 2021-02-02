@@ -36,8 +36,8 @@ function* render (expr, context) {
   if (typeof elem === 'string')
     yield elem
   else {
-    yield `<${elem.tagName} ${renderAttributes(elem)}>`
-    if (subs) yield* render (subs, context)
+    yield `<${elem.tagName}${renderAttributes (elem)}>`
+    if (subs) yield* render (subs, context) // TODO should we check for void/ rawtext elems here?
     yield `</${elem.tagName}>`
   }
   if (sibs) yield* render (sibs, context)
@@ -50,8 +50,6 @@ function renderAttributes (el) {
     if (v !== '') r.push ('=', '"', v.replace (/"/g, '&quot;'), '"') }
   return r.join ('')
 }
-
-
 
 var tree = bindDefs (parse (sample, preEval))
 var data = { name:'test', bar:undefined, foo:null, arr:[1,2,'x',3] }

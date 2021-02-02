@@ -114,24 +114,43 @@ function preEval (...expr) {
     case T.bind: // REVIEW should bind distribute over defs or not?
       return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
 
-    case T.Attr: // 'add attributes': higher order postfix operator
+    case T.Attr: { // 'add attributes': higher order postfix operator
+      let _x = x.expr? x.expr : x
+      switch (_x[0][0]) {
+        case T.attrName: case T.collate: case T.assign: break
+        default: throw new TypeError ('Invalid attribute expression')
+      }
       return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
-      // FIXME there's still problems with bindDefs here, or maybe 
-      // it is due to the signature overlap?
+    }
+      // FIXME there's still problems here due to the signature overlap
 
     // ### Attributes
 
-    case T.attrName:
+    case T.collate: 
+      for (let i=1,l=expr.length; i<l; i++) { // Type check
+        switch (expr[i][0][0]) {
+          case T.assign: case T.attrName: break
+          default: throw new TypeError ('Invalid attribute expression')
+        }
+      }
       return expr
 
-    case T.collate: // convert to n-ary
+    case T.attrName:
+      return expr
+    
+    case T.valueIn: case T.keyIn:
       return expr
 
     case T.assign: { // assert additional type constraints
-      const ya = y[0][2]
-      if (x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be attrName, got '+x.type)
-      if (y[0][0] === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
-      return [[T.assign, x[0][1]], y] // REVIEW rewrap attrNames in value) position
+      // NB this is untidy; the check is needed because the signatures are merged, so 
+      // we may have interpreted the operands as if they were in the Tree, rather than Attributes signature
+      // (WIP removing that, only String remains)
+      const _x = x.expr? x.expr : x
+      const _y = y.expr? y.expr : y
+      const yop = _y[0][0]
+      if (_x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be an attribute name token')
+      if (yop === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
+      return [expr[0], _x, _y] // REVIEW rewrap attrNames in value) position
     }
 
     // ### Strings

@@ -1,7 +1,7 @@
 
 form @login
   > (h1 > "Login")
-  + (label > "name" + input [name=name])
+  + (label > "name" + input [name=name value=%name])
   + (button > "login");
 
 html > (head > title > "login")

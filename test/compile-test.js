@@ -32,7 +32,6 @@ var samples = [
   '@a',
   '(div@a) + b',
   'span:number:selected > %',
-  'a[d=%]',
   '"test" @s', // I guess that's ok
   'span:number > %',
   '(span:number > %)*',
@@ -44,6 +43,17 @@ var samples = [
   '(div:foo@d)',
   '(div)@d',
   `form@f1; form@f2; foo`,
+  'a[d=%]',
+  'a[d=a s="b" c d=e]',
+  'a[d=a s="b" c=%name d=e %]',
+  'a["test"]', // must trhow
+  'a[%]',      // must trhow
+  'a[a=a %]',  //must throw
+  'a[a=a b=%]',
+  'a[a "b"]',
+  'a[a="b"]',
+  'a[a=a]',
+  'a[a=a a=b c]',
 ]
 
 var sample = samples[samples.length-1]
@@ -53,7 +63,7 @@ var sample = samples[samples.length-1]
 
 log (sample, '\n===============\n')
 const tree = parse (sample)
-log (JSON.stringify (tree))
+log (JSON.stringify (tree, 0, 2))
 
 var folded = bindDefs (fold (tree, preEval))
 log (JSON.stringify (folded, 0, 2))

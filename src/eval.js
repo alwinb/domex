@@ -6,12 +6,6 @@ const { createElement, createTextNode } = require ('./dom')
 // unfold: takes an expression and its input data
 // and returns a one-element unfolding [elem, subs-expr, siblings-expr]
 
-function append (x, y) {
-  if (x[0][0] === T.void) return y
-  if (y[0][0] === T.void) return x
-  return [[T.append, '+'], x, y]
-}
-
 const VOID = [[T.void, 'ε']]
 
 function unfold (expr, context = {})  {
@@ -88,7 +82,7 @@ function unfold (expr, context = {})  {
     if (sibs2.length === 1) sibs2 = VOID
     if (sibs2.length === 2) sibs2 = sibs2[1]
     // log ('iter', { elem, subs, sibs, sibs2 })
-    return [elem, subs, append(sibs, sibs2)]
+    return [elem, subs, append (sibs, sibs2)]
   }
 
   case T.descend: {
@@ -129,14 +123,45 @@ function unfold (expr, context = {})  {
     return [elem, subs, sibs]
   }
     
-  case T.Attr:
-    // TODO: set attributes
-    const d1 = unfold (expr[1], context)
-    return d1
+  case T.Attr: {
+    const [elem, subs, sibs] = unfold (expr[2], context)
+    setAttributes (elem, expr[1], context)
+    return [elem, subs, sibs]
+  }
 
   // default:
   //   log (expr)
   //   throw new Error (expr)
+  }
+}
+
+function append (x, y) {
+  if (x[0][0] === T.void) return y
+  if (y[0][0] === T.void) return x
+  return [[T.append, '+'], x, y]
+}
+
+// ### Attribute evaluation
+// This is hacked in quick - not as tidy as the rest
+
+function setAttributes (elem, expr, context) {
+  // log ('setAttributes', elem, expr)
+  if (expr[0][0] === T.collate) for (let i=0,l=expr.length; i<l; i++)
+    setAttribute (elem, expr[i], context)
+  else setAttribute (elem, expr, context)
+}
+
+function setAttribute (elem, expr, context) {
+  // log ('setAttribute', elem, expr)
+  if (expr[0][0] === T.attrName) elem.setAttribute (expr[0][1], '')
+  if (expr[0][0] === T.assign) elem.setAttribute (expr[1][0][1], evalAttribute(expr[2], context))
+}
+
+function evalAttribute ([[tag,opdata]], context) {
+  switch (tag){
+    case T.keyIn: return context.key
+    case T.valueIn: return String (opdata === '%' ? context.data : context.data[opdata.substr(1)])
+    default: return opdata
   }
 }
 
