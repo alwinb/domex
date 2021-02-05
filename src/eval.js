@@ -93,14 +93,20 @@ function unfold (expr, context = {})  {
     return [elem, append (subs, subs2), sibs]
   }
 
-  case T.append: { // FIXME
-    const [elem, subs, sibs] = unfold (expr[1], context)
-    let _expr = [[T.append, '+'], ...expr.slice (2)]
-    if (_expr.length === 1) _expr = VOID
-    else if (_expr.length === 2) _expr = _expr[1]
-    const subs2 = [[T.withdata, { data, key, lib }], _expr]
-    // log ('append', { expr, sibs, subs2 })
-    return [elem, subs, append (sibs, subs2)]
+  case T.append: {
+    for (let i=1,l=expr.length; i<l; i++) {
+      const [elem, subs, sibs] = unfold (expr[i], context)
+      if (elem != null) {
+        // TODO prefer to not slice the expr, come up with something else
+        // also, prevent superfluous withData nodes
+        let _expr = [[T.append, '+'], ...expr.slice (i+1)]
+        if (_expr.length === 1) _expr = VOID
+        else if (_expr.length === 2) _expr = _expr[1]
+        const sibs2 = [[T.withdata, { data, key, lib }], _expr]
+        return [elem, subs, append (sibs, sibs2)]
+      }
+    }
+    return [null, VOID, VOID]
   }
 
   case T.orelse: {
@@ -125,7 +131,7 @@ function unfold (expr, context = {})  {
     
   case T.Attr: {
     const [elem, subs, sibs] = unfold (expr[2], context)
-    setAttributes (elem, expr[1], context)
+    if (elem) setAttributes (elem, expr[1], context)
     return [elem, subs, sibs]
   }
 

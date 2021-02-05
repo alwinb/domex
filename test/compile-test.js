@@ -54,6 +54,7 @@ var samples = [
   'a[a="b"]',
   'a[a=a]',
   'a[a=a a=b c]',
+  'a:string + b',
 ]
 
 var sample = samples[samples.length-1]
