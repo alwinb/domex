@@ -57,7 +57,7 @@ function unfold (expr, context = {})  {
 
   case T.bind: {
     key = op[1] .substr(1)
-    data = data[key]
+    data = data == null ? undefined : data[key]
     return unfold (expr[1], { data, key, lib })
   }
 
@@ -74,7 +74,8 @@ function unfold (expr, context = {})  {
     const body = expr[1]
     let sibs2 = [[T.append, '+']]
     let [elem, subs, sibs] = [null, VOID, VOID]
-    for (let [key,v] of Object.entries (data)) { // TODO proper incremental analyse
+    if (op[1].length > 1) data = data == null ? undefined : data[op[1] .substr(1)]
+    if (data != null) for (let [key,v] of Object.entries (data)) { // TODO make lazy
       const ctx = { data:v, key, lib };
       if (!elem) [elem, subs, sibs] = unfold (body, ctx)
       else { sibs2 [sibs2.length] = [[T.withdata, ctx], body] }
