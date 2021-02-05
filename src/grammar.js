@@ -40,8 +40,8 @@ const tokens = {
   valueIn:   token   `[%] [a-zA-Z0-9]*` (LEAF),
   keyIn:     token   `[$]` (LEAF),
 
-  class:     token   `[.] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
-  hash:      token   `[#] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  class:     token   `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*` (POSTFIX, 9),
+  hash:      token   `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*` (POSTFIX, 9),
   def:       token   `[@] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
 
   test:      token   `[:] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
