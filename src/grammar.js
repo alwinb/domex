@@ -45,6 +45,7 @@ const tokens = {
   def:       token   `[@] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
 
   test:      token   `[:] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
+  ttest:     token   ` :: [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   bind:      token   `[~] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
   iter:      token   `[*] [a-zA-Z0-9]*` (POSTFIX, 9),
 
@@ -77,7 +78,7 @@ const signature = {
       T.descend, T.append, T.orelse, T.declare,
       $ => $.Attr,
       T.class, T.hash, T.def,
-      T.test, T.bind, T.iter ],
+      T.ttest, T.test, T.bind, T.iter ],
     end: T.end,
   },
 

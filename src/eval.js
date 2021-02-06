@@ -24,10 +24,10 @@ function unfold (expr, context = {})  {
     return [createTextNode (op[1]), VOID, VOID]
 
   case T.key:
-    return [createTextNode (String (key)), VOID, VOID]
+    return [createTextNode (key == null ? '' : String (key)), VOID, VOID]
 
   case T.value:
-    return [createTextNode (String (data)), VOID, VOID]
+    return [createTextNode (data == null ? '' : String (data)), VOID, VOID]
 
   case T.component: {
     const n = op[1]
@@ -61,12 +61,19 @@ function unfold (expr, context = {})  {
     return unfold (expr[1], { data, key, lib })
   }
 
-  case T.test: {
-    let test = op[1] .substr(1)
+  case T.ttest: {
+    let test = op[1] .substr (2)
     let _type = data === null ? 'null' : Array.isArray (data) ? 'array' : typeof data
     if (_type === 'object' && data.type) _type = data.type
     // log ('test', test, _type)
     if (test !== _type) return [null, VOID, VOID]
+    else return unfold (expr[1], context)
+  }
+
+  case T.test: {
+    let test = op[1] .substr (1)
+    let _value = data == null ? false : data[test]
+    if (_value == null || _value === false) return [null, VOID, VOID]
     else return unfold (expr[1], context)
   }
 
@@ -87,6 +94,7 @@ function unfold (expr, context = {})  {
   }
 
   case T.descend: {
+    // TODO what about (a + b) > c ?
     const [elem, subs, sibs] = unfold (expr[1], context)
     if (!elem) return [null, VOID, VOID]
     const subs2 = [[T.withdata, { data, key, lib }], expr[2]]
@@ -165,9 +173,10 @@ function setAttribute (elem, expr, context) {
 }
 
 function evalAttribute ([[tag,opdata]], context) {
+  const data = context.data
   switch (tag){
     case T.keyIn: return context.key
-    case T.valueIn: return String (opdata === '%' ? context.data : context.data[opdata.substr(1)])
+    case T.valueIn: return data == null ? '' : opdata === '%' ? String (data) : String (data[opdata.substr(1)]) // TODO failsafe
     default: return opdata
   }
 }

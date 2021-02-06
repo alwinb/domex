@@ -19,5 +19,6 @@ var sample = 'div > "foo" + %'
 var sample = 'div > "foo" + %name'
 var sample = 'foo + bar + baz | bee@a +  buzz + bazz | boo'
 var sample = 'foo[bar=bee buzz= bazz bo]'
+var sample = 'foo::string'
 log (sample, '\n=========================')
 log (JSON.stringify (bindDefs(parse (sample, preEval)), null, 2))

@@ -109,6 +109,7 @@ function preEval (...expr) {
       return { ops:[expr[0], x.ops], name:null, expr:x.expr }
 
     case T.test:
+    case T.ttest:
     case T.class: // REVIEW, disallow the following on non-elements? how? all?
     case T.hash:
     case T.bind: // REVIEW should bind distribute over defs or not?
