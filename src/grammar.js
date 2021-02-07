@@ -3,51 +3,29 @@ const hoop = require ('./hoop2.js')
 const { token, tokenType } = hoop
 const { START, END, LEAF, PREFIX, INFIX, ASSOC, POSTFIX, SKIP } = hoop.Roles
 
+const rx = (...source) =>
+  String.raw (...source) .replace (/\s+/g, '')
+
+const atom = (...source) =>
+  [String.raw (...source) .replace (/\s+/g, ''), LEAF]
+
+const postfix = (...source) =>
+  [String.raw (...source) .replace (/\s+/g, ''), POSTFIX]
+
+const infix = (...source) =>
+  [String.raw (...source) .replace (/\s+/g, ''), INFIX]
+
+const assoc = (...source) =>
+  [String.raw (...source) .replace (/\s+/g, ''), ASSOC]
+
+
 // Grammar for Domex
 // -----------------
 
 const tokens = {
-  space:     token `[\t\f\x20]+` (SKIP), // TODO tag the roles in the rule compiler for operators also
-  comment:   token   `// [^\n]*` (SKIP), 
-  newline:   token        `[\n]` (SKIP), 
-
-  elem:      token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
-  attrName:  token `[a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
-  component: token `@ [a-zA-Z] [a-zA-Z0-9_\-]*` (LEAF),
-  value:     token   `[%] [a-zA-Z0-9]*` (LEAF),
-  key:       token   `[$]` (LEAF),
-
-  start:     token   `[(]` (START),
   end:       token   `[)]` (END),
-
-  strStart:  token   `["]` (START),
-  strChars:  token   `[^0x00-0x19\\"]+` (LEAF),
-  escape:    token   `[\\]["/\\bfnrt]` (LEAF),
-  hexescape: token   `[\\]u[a-fA-F0-9]{4}` (LEAF),
-  empty:     token   `.{0}` (LEAF),
-  strCat:    token   `.{0}` (INFIX, 0), // could use ASSOC
   strEnd:    token   `["]` (END),
-
-  descend:   token   `[>]` (INFIX, 3),
-  append:    token   `[+]` (ASSOC, 3),
-  orelse:    token   `[|]` (ASSOC, 2),
-  declare:   token   `[;]` (ASSOC, 0), // TODO also allow it in postfix pos
-
-  attrStart: token    `\[` (START),
-  assign:    token   `[=]` (INFIX, 9),
-  collate:   token   `.{0}(?![[=])` (ASSOC, 0),
   attrEnd:   token    `\]` (END),
-  valueIn:   token   `[%] [a-zA-Z0-9]*` (LEAF),
-  keyIn:     token   `[$]` (LEAF),
-
-  class:     token   `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*` (POSTFIX, 9),
-  hash:      token   `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*` (POSTFIX, 9),
-  def:       token   `[@] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
-
-  test:      token   `[:] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
-  ttest:     token   ` :: [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
-  bind:      token   `[~] [a-zA-Z] [a-zA-Z0-9]*` (POSTFIX, 9),
-  iter:      token   `[*] [a-zA-Z0-9]*` (POSTFIX, 9),
 
   // Additional tags,
   // used by compile and eval
@@ -65,43 +43,70 @@ const T = tokens
 // The function $=>$.Tree (eg) is used to make references to
 // other rules in the grammar (is handled by hoop compile).
 
+const skip = {
+  space:   rx `[\t\f\x20]+`,
+  newline: rx `[\n]` , 
+  comment: rx  `// [^\n]*`, 
+}
+
 // NB here already the ordering of the token regexes matters, hacking it now
 
 const signature = {
 
   Tree: {
     name: 'Tree',
-    start: T.start,
-    skip: [ T.space, T.comment, T.newline ],
-    operands: [ T.elem, T.component, $ => $.Tree, $ => $.String, T.value, T.key ],
-    operators: [
-      T.descend, T.append, T.orelse, T.declare,
-      $ => $.Attr,
-      T.class, T.hash, T.def,
-      T.ttest, T.test, T.bind, T.iter ],
     end: T.end,
+    skip, 
+
+    sig: [
+      { elem:      atom    `    [a-zA-Z] [a-zA-Z0-9_\-]*`
+      , component: atom    `[@] [a-zA-Z] [a-zA-Z0-9_\-]*`
+      , value:     atom    `[%] [a-zA-Z0-9_\-]*`
+      , key:       atom    `[$]`
+      , group:    [LEAF,   `[(]`, $ => $.Tree,   `[)]`]
+      , text:     [LEAF,   `["]`, $ => $.String, `["]`] },
+      { declare:   assoc   `[;]` }, // TODO also allow it in postfix pos
+      { orelse:    assoc   `[|]` },
+      { descend:   infix   `[>]`
+      , append:    assoc   `[+]` },
+      { class:     postfix `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
+      , hash:      postfix `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
+      , def:       postfix `[@] [a-zA-Z] [a-zA-Z0-9]*`
+      , ttest:     postfix ` :: [a-zA-Z] [a-zA-Z0-9]*`
+      , test:      postfix `[:] [a-zA-Z] [a-zA-Z0-9]*`
+      , bind:      postfix `[~] [a-zA-Z] [a-zA-Z0-9]*`
+      , iter:      postfix `[*] [a-zA-Z0-9]*`
+      , attr:     [POSTFIX, `[[]`, $ => $.Attr, `[\]]`] }
+    ],
+
   },
 
   Attr: {
     name: 'Attr',
-    role: POSTFIX,
-    precedence: 9,
-    start: T.attrStart,
-    skip: [ T.space, T.comment, T.newline ],
-    operands: [ T.attrName, T.valueIn, T.keyIn, $ => $.String ],
-    operators: [ T.assign, T.collate ],
     end: T.attrEnd,
+    skip,
+
+    sig: [
+      { attrName: atom `[a-zA-Z] [a-zA-Z0-9_\-]*`
+      , valueIn:  atom `[%] [a-zA-Z0-9]*`
+      , keyIn:    atom `[$]`
+      , stringIn: [LEAF, rx `["]`, $ => $.String, rx `["]`] },
+      { collate: assoc `.{0} (?![[=])` },
+      { assign:  infix `[=]` },
+    ],
   },
 
   String: {
     name: 'String',
-    role: LEAF,
-    start: T.strStart,
-    operands: [ T.strChars, T.escape, T.hexescape, T.empty ],
-    operators: [ T.strCat ],
     end: T.strEnd,
+    sig: [
+      { strChars:  atom `[^0x00-0x19\\"]+`
+      , escape:    atom `[\\]["/\\bfnrt]`
+      , hexescape: atom `[\\]u[a-fA-F0-9]{4}`
+      , empty:     atom `.{0}` },
+      { strCat: infix `.{0}` }
+    ],
   },
-
 }
 
 
@@ -123,5 +128,11 @@ function parse (input, apply) {
 const types = {}
 for (let k in T) types[k] = T[k][1]
 for (let k in signatures) types[k] = signatures[k].type
+
+for (const sig in signatures)
+  for (const k in signatures[sig].types)
+    types[k] = signatures[sig].types[k]
+
+
 
 module.exports = { signatures, parse, tokenTypes:types, Roles:hoop.Roles }

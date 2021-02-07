@@ -52,10 +52,10 @@ function preEval (...expr) {
 
     // ### Tree operands
 
-    case T.Tree: // replace `()` group with contents
+    case T.group: // replace `()` group with contents
       return x // { expr: bindDefs (x) }
 
-    case T.String:
+    case T.text:
       return { expr:[[T.text, x]], ops:null, name:null }
 
     case T.elem:
@@ -115,9 +115,8 @@ function preEval (...expr) {
     case T.bind: // REVIEW should bind distribute over defs or not?
       return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
 
-    case T.Attr: { // 'add attributes': higher order postfix operator
-      let _x = x.expr? x.expr : x
-      switch (_x[0][0]) {
+    case T.attr: { // 'add attributes': higher order postfix operator
+      switch (x[0][0]) {
         case T.attrName: case T.collate: case T.assign: break
         default: throw new TypeError ('Invalid attribute expression')
       }
@@ -136,22 +135,17 @@ function preEval (...expr) {
       }
       return expr
 
-    case T.attrName:
-      return expr
-    
-    case T.valueIn: case T.keyIn:
+    case T.attrName: case T.valueIn: case T.keyIn:
       return expr
 
+    case T.stringIn:
+      return [[expr[0][0], x]]
+
     case T.assign: { // assert additional type constraints
-      // NB this is untidy; the check is needed because the signatures are merged, so 
-      // we may have interpreted the operands as if they were in the Tree, rather than Attributes signature
-      // (WIP removing that, only String remains)
-      const _x = x.expr? x.expr : x
-      const _y = y.expr? y.expr : y
-      const yop = _y[0][0]
-      if (_x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be an attribute name token')
+      const yop = y[0][0]
+      if (x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be an attribute name token')
       if (yop === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
-      return [expr[0], _x, _y] // REVIEW rewrap attrNames in value) position
+      return [expr[0], x, y] // REVIEW rewrap attrNames in value) position
     }
 
     // ### Strings
@@ -163,7 +157,7 @@ function preEval (...expr) {
     case T.strCat:    return x + y
 
     default:
-      throw new Error (`preEval: unknown operator type: ${tag} ${N[tag]}`)
+      throw new TypeError (`compile: unknown operator type: ${tag} ${N[tag]}`)
   }
 }
 

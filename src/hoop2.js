@@ -27,6 +27,7 @@ const token = (...source) => (role, ...info) =>
   [String.raw (...source) .replace (/\s+/g, ''), (typeId++ << 9) | role, ...info]
 
 const tokenType = () => ['', typeId++ << 9] // HACK to produce typeIds, for now
+const newTag = () => typeId++ << 9
 
 // ### Tokens Roles
 // Using bitflags for the token roles. 
@@ -76,43 +77,41 @@ function compile (grammar) {
 // compiled from a single 'rule'
 
 function Lexer (ruleName, rule, grammar) {
+  const { end, skip = {}, sig = [] } = rule
+  const types = (this.types = {})
   const befores = [], afters = []
-  const { role = LEAF, start, end,
-    skip = [], infix = [], operands = [], operators = [],
-    precedence } = rule
-  const type = (typeId++ << 9) | role | GROUP
 
-  for (let x of skip) {
-    befores.push ([x[0], SKIP])
-    afters.push ([x[0], SKIP])
+  for (const k in skip) {
+    const x = skip[k]
+    befores.push ([x, SKIP])
+    afters.push ([x, SKIP])
   }
-  afters.push ([end[0], END, type, precedence])
+  afters.push ([end[0], END])
 
-  for (let x of operands) {
-    if (typeof x === 'function') {
-      const subrule = x (grammar)
-      const s = subrule.start
-      befores.push ([s[0], START, subrule.name])
-    }
-    else befores.push ([x[0], x[1]|LEAF])
-  }
+  for (let i=0, l=sig.length; i<l; i++) for (const k in sig[i]) {
+    let def = sig[i][k]
+    let t = newTag (), info = 0
 
-  for (let x of operators) {
-    if (typeof x === 'function') {
-      const subrule = x (grammar)
-      const s = subrule.start
-      x = [s[0], START, subrule.name]
+    if (typeof def[0] === 'number') { // wrapfix operator (WIP -- add end too)
+      const [role, s, deref, end] = def
+      const subrule = deref (grammar)
+      types[k] = t | role | GROUP
+      info = [s, t | START | role, i, subrule.name]
     }
-    const type = x[1]
-    if (type & PREFIX) befores.push (x)
-    else afters.push (x)
+
+    else {
+      const [rx, role] = def
+      types[k] = t |= role
+      info = [rx, t]
+      if (!(t & LEAF)) info[2] = i
+    }
+
+    if (info[1] & (PREFIX | LEAF)) befores.push (info)
+    else afters.push (info) // default precedence
   }
 
   this.name = ruleName
-  this.type = type
-  if (type & (PREFIX | INFIX | ASSOC | POSTFIX))
-    this.precedence = precedence
-
+  // log ({befores, afters})
   Object.defineProperties (this, {
     Before: { value: oneOf (befores) },
     After: { value: oneOf (afters) }
@@ -186,7 +185,9 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     for (let k in Roles)
       if (role & Roles[k]) debug.push (k)
     debug = debug.join('|')
-    log (debug, token, group) //*/
+    log (debug, token, group)
+    log ({ position, lastnl })
+    //*/
 
     // Operator -- first apply ops of higher precedence
 
@@ -207,11 +208,14 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 
     if (role & END) {
       context.pop ()
-      token = [[lexer.type, opener[1] + token[1]], builds[0]];
+      const precedence = opener[2]
+      const type = opener[0]
+      // Unset the START bit, add the GROUP bit
+      const type_ = (type & ~START) | GROUP
+      token = [[type_, opener[1] + token[1]], builds[0]];
       group = token
       if (!context.length) return apply (...token)
-      // add precedence info
-      if (lexer.type & (PREFIX | INFIX | ASSOC | POSTFIX)) token.push (lexer.precedence)
+      if (type & (PREFIX | INFIX | ASSOC | POSTFIX)) token.push (precedence)
       ;({ opener, ops, builds, lexer } = context [context.length-1])
       continue
     }
@@ -222,9 +226,11 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 
     if (role & START) { 
       opener = token
+      const name = opener[3] // [type, value, precedence, lexer-name]
+      // log ('START', info, token)
       ops    = []
       builds = []
-      lexer  = lexers [info] // info == [type, START, lexer]
+      lexer  = lexers [name]
       context.push ({ opener, ops, builds, lexer })
       state = PRE
     }

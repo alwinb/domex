@@ -14,11 +14,22 @@ log (JSON.stringify (parse (sample), null, 2))
 
 // log (JSON.stringify (parse ('a > b + c?test')))
 
-var sample = 'a@one [foo="bee"] > (b | c) +d ; two@a > three'
-var sample = 'div > "foo" + %'
-var sample = 'div > "foo" + %name'
-var sample = 'foo + bar + baz | bee@a +  buzz + bazz | boo'
-var sample = 'foo[bar=bee buzz= bazz bo]'
-var sample = 'foo::string'
-log (sample, '\n=========================')
-log (JSON.stringify (bindDefs(parse (sample, preEval)), null, 2))
+const samples = [
+  'div > "foo\\nbar" + %',
+  'div > "foo" + %name',
+  'foo + bar + baz | bee@a +  buzz + bazz | boo',
+  'foo[bar=bee buzz= bazz bo]',
+  'foo::string',
+  'foo::string@f + (bar@x; buz) + be', // Hmmm is that as desired?
+  'foo[s=d] > (bar > "be\\nb")',
+  '//asdf\n\n(a@a; b@b; c)@x; d',
+  'a#foo + b.boo > c > "zo\\no"',
+  'a + b + c | d + e + f | g | h [i=j]',
+  '\n( span::number    .number    > %)',
+  'a@one [foo="bee\\bar"] > (b | c) +d ; two@a > three',
+]
+
+for (const sample of samples) {
+  log (sample, '\n=========================')
+  log (JSON.stringify (bindDefs(parse (sample, preEval)), null, 2))
+}

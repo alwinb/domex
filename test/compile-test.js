@@ -51,10 +51,11 @@ var samples = [
   'a[a=a %]',  //must throw
   'a[a=a b=%]',
   'a[a "b"]',
-  'a[a="b"]',
   'a[a=a]',
   'a[a=a a=b c]',
   'a:string + b',
+  'a[a="b"]',
+  'a[a="b\\nc"]',
 ]
 
 var sample = samples[samples.length-1]

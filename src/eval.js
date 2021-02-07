@@ -138,7 +138,7 @@ function unfold (expr, context = {})  {
     return [elem, subs, sibs]
   }
     
-  case T.Attr: {
+  case T.attr: {
     const [elem, subs, sibs] = unfold (expr[2], context)
     if (elem) setAttributes (elem, expr[1], context)
     return [elem, subs, sibs]
