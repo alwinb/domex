@@ -38,6 +38,14 @@ const FlagsOnto = (map = {}, start = 0) =>
 const Roles = { }
 const { START, END, SKIP, LEAF, ASSOC, INFIX, PREFIX, POSTFIX, GROUP } = FlagsOnto (Roles)
 
+const _token = role => (...source) =>
+  [String.raw (...source) .replace (/\s+/g, ''), role]
+
+const [start, atom, prefix, infix, assoc, postfix, end] = 
+  [START, LEAF, PREFIX, INFIX, ASSOC, POSTFIX, END] .map (_token)
+
+// const Token = { start, atom, prefix, infix, assoc, postfix, end }
+
 // ### Lexer compiler
 
 // `oneOf` compiles a list of token-descriptions to a RegExp that
@@ -93,10 +101,9 @@ function Lexer (ruleName, rule, grammar) {
     let t = newTag (), info = 0
 
     if (typeof def[0] === 'number') { // wrapfix operator (WIP -- add end too)
-      const [role, s, deref, end] = def
-      const subrule = deref (grammar)
+      const [role, s, name, end] = def
       types[k] = t | role | GROUP
-      info = [s, t | START | role, i, subrule.name]
+      info = [s, t | START | role, i, name]
     }
 
     else {
@@ -271,4 +278,5 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 // Exports
 // =======
 
-module.exports = { compile, Parser, Roles, token, tokenType, roleMask, typeMask }
+module.exports = { compile, Parser, Roles, token, tokenType, roleMask, typeMask,
+  start, atom, prefix, infix, assoc, postfix, end }

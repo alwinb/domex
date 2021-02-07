@@ -1,16 +1,16 @@
 const log = console.log.bind (console)
 const { typeMask } = require ('./hoop2')
-const { tokenTypes } = require ('./grammar')
+const { nodeTypes } = require ('./grammar')
 
 // `preEval` Algebra
 // =================
 // Some pre-evaluation;
 // Assert some additional type constraints.
 
-const T = tokenTypes
+const T = nodeTypes
 const typeNames = { }
 const N = typeNames
-for (let k in tokenTypes) {
+for (let k in nodeTypes) {
   const t = T[k]
   typeNames[t] = k
 }
@@ -50,7 +50,7 @@ function preEval (...expr) {
   const xa = (x && x[0] && x[0][2]) // putting annotations on the operator ;)
   switch (tag) {
 
-    // ### Tree operands
+    // ### Dom operands
 
     case T.group: // replace `()` group with contents
       return x // { expr: bindDefs (x) }
@@ -69,7 +69,7 @@ function preEval (...expr) {
       return { expr:ref, ops, name:null }
     }
 
-    // ### Tree operators (infix)
+    // ### Dom operators (infix)
 
     case T.append:
     case T.orelse: {
@@ -98,7 +98,7 @@ function preEval (...expr) {
       return { expr: bindDefs ({ ops:x.ops, expr:_expr, name:x.name }) }
     }
 
-    // ### Tree operators (postfix)
+    // ### Dom operators (postfix)
 
     case T.def:
       if (x.name != null)

@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { parse } = require ('../src/grammar.js')
-const { tokenTypes:T } = require ('./grammar')
+const { nodeTypes:T } = require ('./grammar')
 const { createElement, createTextNode } = require ('./dom')
 
 // unfold: takes an expression and its input data
