@@ -1,5 +1,5 @@
 const log = console.log.bind (console)
-const { parse } = require ('../src/grammar.js')
+const { parse } = require ('../src/signature.js')
 const { preEval, bindDefs } = require ('../src/compile.js')
 const { fold } = require ('../src/fold.js')
 

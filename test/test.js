@@ -32,7 +32,7 @@ sample.renderTo (sampleData, process.stdout)
 //process.exit (205)
 
 
-const e = DomEx.fromFile ('./test.dx', (err,dx) => {
+const e = DomEx.fromFile (__dirname + '/test.dx', (err,dx) => {
   if (err) log (err)
   else dx.renderTo ({ name:'joe' }, process.stdout)
   process.exit (205)

@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
+const { nodeTypes } = require ('./signature')
 const { typeMask } = require ('./hoop2')
-const { nodeTypes } = require ('./grammar')
 
 // `preEval` Algebra
 // =================

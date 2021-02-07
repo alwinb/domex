@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { readFile } = require ('fs')
-const { signatures, parse } = require ('../src/grammar.js')
+const { signatures, parse } = require ('../src/signature.js')
 const { fold, preEval, bindDefs } = require ('../src/compile.js')
 const { unfold } = require ('../src/eval.js')
 const raw = (...args) => String.raw (...args)
