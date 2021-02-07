@@ -11,10 +11,7 @@ TM_RUN_TARGET = ../test/parser-test.js
 
 [src/compile.js]
 TM_RUN_TARGET = ../test/compile-test.js
-# TM_RUN_TARGET = ../test/eval-test.js
+# TM_RUN_TARGET = ../test/test.js
 
 [src/eval.js]
-TM_RUN_TARGET = ../test/eval-test.js
-
-[src/eval-refold.js]
-TM_RUN_TARGET = ../test/eval-refold-test.js
+TM_RUN_TARGET = ../test/test.js

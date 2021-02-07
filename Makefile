@@ -1,9 +1,9 @@
 .PHONY: all clean run
 
 srcdir = src/
-files = hoop-parser.js index.js dom.js browser.js domex.js
+files = signature.js hoop2.js compile.js eval.js dom.js index.js browser.js 
 bundle-name = domex
-bundle-entry = browser.js
+bundle-entry = index.js
 sources = $(addprefix $(srcdir), $(files))
 
 run: all
@@ -11,10 +11,10 @@ run: all
 all: dist/$(bundle-name).js dist/$(bundle-name).min.js
 
 dist/$(bundle-name).min.js: dist/ $(sources)
-	esbuild $(srcdir)$(bundle-entry) --minify --bundle --outfile=dist/$(bundle-name).min.js
+	npx esbuild $(srcdir)$(bundle-entry) --platform=node --minify --bundle --outfile=dist/$(bundle-name).min.js
 
 dist/$(bundle-name).js: dist/ $(sources)
-	esbuild $(srcdir)$(bundle-entry) --bundle --outfile=dist/$(bundle-name).js
+	npx esbuild $(srcdir)$(bundle-entry) --platform=node --bundle --outfile=dist/$(bundle-name).js
 
 dist/:
 	mkdir dist/
