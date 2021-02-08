@@ -27,8 +27,14 @@ body > div > @default
 sample.renderTo (sampleData, process.stdout)
 //process.exit (205)
 
-var sample = domex `"one":string + "two"`
+// var sample = domex `a[class=foo].b [class=" c d "].e`
+// sample.renderTo (sampleData, process.stdout)
+
+var sample = domex `"test".name`
 sample.renderTo (sampleData, process.stdout)
+
+// var sample = domex `"one":string + "two"`
+// sample.renderTo (sampleData, process.stdout)
 //process.exit (205)
 
 

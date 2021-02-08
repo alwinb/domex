@@ -1,5 +1,5 @@
 const log = console.log.bind (console)
-const { nodeTypes } = require ('./signature')
+const { signatures, nodeTypes:T } = require ('./signature')
 const { typeMask } = require ('./hoop2')
 
 // `preEval` Algebra
@@ -7,18 +7,9 @@ const { typeMask } = require ('./hoop2')
 // Some pre-evaluation;
 // Assert some additional type constraints.
 
-const T = nodeTypes
-const typeNames = { }
-const N = typeNames
-for (let k in nodeTypes) {
-  const t = T[k]
-  typeNames[t] = k
-}
-// log (T)
-
 // Applies the 'stack of postfix operators' ops
 // and if named, add a binary 'let' operator akin to
-// let (name = expr1) in expr2
+// let/name = expr1 in expr2
 
 function bindDefs ({ expr, ops, name }) {
   if (ops) { let o, l
@@ -47,7 +38,6 @@ const _escapes = {
 function preEval (...expr) {
   // log ('preEval', expr)
   const [[tag, data], x, y] = expr
-  const xa = (x && x[0] && x[0][2]) // putting annotations on the operator ;)
   switch (tag) {
 
     // ### Dom operands
@@ -78,7 +68,7 @@ function preEval (...expr) {
       return { expr: _expr }
     }
 
-    case T.declare: // TODO/ FIXME
+    case T.declare:
       const lib = Object.create (null)
       const l = expr.length-1
       for (let i=1; i<l; i++) {
@@ -108,34 +98,32 @@ function preEval (...expr) {
     case T.iter:
       return { ops:[expr[0], x.ops], name:null, expr:x.expr }
 
-    case T.test:
-    case T.ttest:
-    case T.class: // REVIEW, disallow the following on non-elements? how? all?
-    case T.hash:
     case T.bind: // REVIEW should bind distribute over defs or not?
+    case T.test: case T.ttest:
+    case T.class: case T.hash:
       return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
 
     case T.attr: { // 'add attributes': higher order postfix operator
       switch (x[0][0]) {
-        case T.attrName: case T.collate: case T.assign: break
+        case T.unquoted: case T.collate: case T.assign: break
         default: throw new TypeError ('Invalid attribute expression')
       }
       return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
     }
-      // FIXME there's still problems here due to the signature overlap
+
 
     // ### Attributes
 
     case T.collate: 
       for (let i=1,l=expr.length; i<l; i++) { // Type check
         switch (expr[i][0][0]) {
-          case T.assign: case T.attrName: break
+          case T.assign: case T.unquoted: break
           default: throw new TypeError ('Invalid attribute expression')
         }
       }
       return expr
 
-    case T.attrName: case T.valueIn: case T.keyIn:
+    case T.unquoted: case T.valueIn: case T.keyIn:
       return expr
 
     case T.stringIn:
@@ -143,9 +131,9 @@ function preEval (...expr) {
 
     case T.assign: { // assert additional type constraints
       const yop = y[0][0]
-      if (x[0][0] !== T.attrName) throw new TypeError ('Lhs of `=` must be an attribute name token')
+      if (x[0][0] !== T.unquoted) throw new TypeError ('Lhs of `=` must be an attribute name token')
       if (yop === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
-      return [expr[0], x, y] // REVIEW rewrap attrNames in value) position
+      return [expr[0], x, y]
     }
 
     // ### Strings

@@ -12,7 +12,7 @@ var samples = [
   'p > "hello\\nworld" + a + b',
   'a[d="e\\nf"]',
   // 'a[d=f=g]', // must throw
-  'a[d=f]', // TODO should probably wrap f, or dsallow
+  'a[d=f]',
   'a[b =c d="e\\n" f g]',
   'a + b + g + (c | d | e) + e + f',
   'a:x | b:y | c',
@@ -55,7 +55,7 @@ var samples = [
   'a[a=a a=b c]',
   'a:string + b',
   'a[a="b"]',
-  'a[a="b\\nc"]',
+  'a[a="b\\nc" c=d]',
 ]
 
 var sample = samples[samples.length-1]

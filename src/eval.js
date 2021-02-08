@@ -127,19 +127,19 @@ function unfold (expr, context = {})  {
 
   case T.class: {
     const [elem, subs, sibs] = unfold (expr[1], context)
-    if (elem) elem.classList.add (op[1] .substr (1))
+    if (elem && elem.classList) elem.classList.add (op[1] .substr (1))
     return [elem, subs, sibs]
   }
     
   case T.hash: {
     const [elem, subs, sibs] = unfold (expr[1], context)
-    if (elem) elem.setAttribute ('id', op[1] .substr (1))
+    if (elem && elem.setAttribute) elem.setAttribute ('id', op[1] .substr (1))
     return [elem, subs, sibs]
   }
     
   case T.attr: {
     const [elem, subs, sibs] = unfold (expr[2], context)
-    if (elem) setAttributes (elem, expr[1], context)
+    if (elem && elem.setAttribute) setAttributes (elem, expr[1], context)
     return [elem, subs, sibs]
   }
 
@@ -167,7 +167,7 @@ function setAttributes (elem, expr, context) {
 
 function setAttribute (elem, expr, context) {
   // log ('setAttribute', elem, expr)
-  if (expr[0][0] === T.attrName) elem.setAttribute (expr[0][1], '')
+  if (expr[0][0] === T.unquoted) elem.setAttribute (expr[0][1], '')
   if (expr[0][0] === T.assign) elem.setAttribute (expr[1][0][1], evalAttribute(expr[2], context))
 }
 

@@ -13,28 +13,43 @@ class Element {
 
   constructor (tagName) {
     this.tagName = String (tagName) .toLowerCase ()
-    const cl = []
+    const attributes = new Map ()
     define (this, {
-      classList:  hide (cl),
-      attributes: hide (new Map),
+      classList:  hide (new ClassList (attributes)),
+      attributes: hide (attributes),
       childNodes: hide ([]) })
-    // TODO also update the attributes then
-    define (cl, 'add', hide (str => void (cl.push (str), define (this, 'classList', unhide (cl)))))
   }
-
+  
   get lastChild () {
     const n = this.childNodes
     return n[n.length-1]
   }
 
   setAttribute (k, v) {
+    k = String (k) .toLowerCase ()
     this.attributes.set (k, v)
-    define (this, 'attributes', unhide (this.attributes))
+    if (k === 'class') {
+      define (this, 'classList', hide (new ClassList (this.attributes)))
+      this.classList.splice (0, Infinity, v)
+    }
   }
 
   append (...args) {
     const n = this.childNodes
     define (this, 'childNodes', unhide (!n.length ? args : n.concat (args)))
+  }
+}
+
+// Quick, hacking it, dual access to class attribute
+class ClassList extends Array {
+  constructor (owner) {
+    super ()
+    this.attributes = owner
+  }
+
+  add (item) {
+    this.push (item)
+    this.attributes.set ('class', this.join (' '))
   }
 }
 

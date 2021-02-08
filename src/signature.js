@@ -56,7 +56,7 @@ const signature = {
     end: end `\]`,
 
     sig: [
-      { attrName:  atom `[a-zA-Z] [a-zA-Z0-9_\-]*`
+      { unquoted:  atom `[a-zA-Z] [a-zA-Z0-9_\-]*`
       , valueIn:   atom `[%] [a-zA-Z0-9]*`
       , keyIn:     atom `[$]`
       , stringIn: [LEAF, raw `["]`,  'Chars',  raw `["]`] }, // wrapfix-atom
@@ -103,6 +103,10 @@ for (const sig in signatures)
   for (const k in signatures[sig].types)
     nodeTypes[k] = signatures[sig].types[k]
 
+const typeNames = { }
+for (let k in nodeTypes)
+  typeNames[typeNames[k]] = k
+
 
 // Configuring the parser
 // ----------------------
@@ -118,4 +122,4 @@ function parse (input, apply) {
 // Exports
 // -------
 
-module.exports = { signatures, nodeTypes, parse }
+module.exports = { signatures, nodeTypes, typeNames, parse }
