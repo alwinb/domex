@@ -1,12 +1,12 @@
 const log = console.log.bind (console)
 const { nodeTypes:T, parse } = require ('./signature')
-const { createElement, createTextNode } = require ('./dom')
 
 // unfold: takes an expression and its input data
 // and returns a one-element unfolding [elem, subs-expr, siblings-expr]
 
 const VOID = [[T.void, 'ε']]
 
+const createUnfold = ({ createElement, createTextNode }) =>
 function unfold (expr, context = {})  {
   let { data, key, lib = {} } = context
   const op = expr[0], tag = op[0]
@@ -181,8 +181,7 @@ function evalAttribute ([[tag,opdata]], context) {
 }
 
 
-
 // Exports
 // =======
 
-module.exports = { unfold }
+module.exports = { createUnfold }

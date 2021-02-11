@@ -1,4 +1,5 @@
 const { inspect } = require ('util')
+const { createUnfold } = require ('./eval.js')
 const log = console.log.bind (console)
 const hide = value => ({ writable:1, configurable:1, value })
 const unhide = value => ({ writable:1, configurable:1, enumerable:1, value })
@@ -61,4 +62,44 @@ function createElement (tagName) {
   return new Element (tagName)
 }
 
-module.exports = { Element, createElement, createTextNode }
+const unfold = createUnfold ({ createElement, createTextNode })
+
+
+// Render to html / stream
+
+const voidTags = {
+  area:1,    base:1,  basefont:1,
+  bgsound:1, br:1,    col:1,
+  embed:1,   frame:1, hr:1,
+  img:1,     input:1, keygen:1,
+  link:1,    meta:1,  param:1, 
+  source:1,  track:1
+}
+
+function* _render (expr, context) {
+  const [elem, subs, sibs] = unfold (expr, context)
+  if (elem === null) return
+  if (typeof elem === 'string')
+    yield elem.replace (/</g, '&lt;') // TODO not in rawtext
+  else {
+    yield `<${elem.tagName}${renderAttributes (elem)}>`
+    if (!(elem.tagName in voidTags)) {
+      if (subs) yield* _render (subs, context)
+      yield `</${elem.tagName}>`
+    }
+  }
+  if (sibs) yield* _render (sibs, context)
+}
+
+function renderAttributes (el) { const chunks = [ ]
+  for (let [k,v] of el.attributes) {
+    chunks.push (' ', k)
+    if (v !== '') chunks.push ('=', '"', v.replace (/"/g, '&quot;'), '"') }
+  return chunks.join ('')
+}
+
+
+// Exports
+// -------
+
+module.exports = { Element, createElement, createTextNode, _render }
