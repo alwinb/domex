@@ -69,7 +69,7 @@ const signature = {
     name: 'Chars',
     end: end `["]`,
     sig: [
-      { strChars:  atom `[^0x00-0x19\\"]+`
+      { strChars:  atom `[^\x00-\x19\\"]+`
       , escape:    atom `[\\]["/\\bfnrt]`
       , hexescape: atom `[\\]u[a-fA-F0-9]{4}`
       , empty:     atom `.{0}` },

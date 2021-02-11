@@ -56,6 +56,7 @@ var samples = [
   'a:string + b',
   'a[a="b"]',
   'a[a="b\\nc" c=d]',
+  'p > "this is domex :)"',
 ]
 
 var sample = samples[samples.length-1]
