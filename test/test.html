@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dom Expressions</title>
+  <link rel="stylesheet" href="style/base.css">
+  <link rel="stylesheet" href="style/main.css">
+  <script src="../dist/domex.js"></script>
+</head>
+<body>
+</head>
+<body>
+
+<h1>Dom Expression Language</h1>
+
+<script id=dx1 type="domex">
+
+  // stdlib
+
+  ( span::number    .number    > %
+  | span::string    .string    > %
+  | span::boolean   .boolean   > %
+  | span::symbol    .symbol    > %
+  | span::null      .null      > "null"
+  | span::function  .function  > "function " + %name
+  | span::undefined .undefined > "undefined"
+  | ul  ::array     .array     > li* > @default
+  | dl  ::object    .object    > di* > (dt > $) + (dd > @default)
+  | dl   .unknown              > di* > (dt > $) + (dd > @default)
+  ) @default;
+
+  // lib
+
+  form @login
+    > (h1 > "Login")
+    + (label > "name" + input [name=name value=%name])
+    + (button > "login");
+
+  // main
+
+  @default + @login
+
+</script>
+
+<script>
+const log = console.log.bind (console)
+const dobo = document.body
+const $ = document.getElementById.bind (document)
+const { domex, Domex } = modules.domex
+
+// Bugs bugs bugx
+
+
+const sample = domex `
+  ( h1 > "Hello, World" )
+  + p > "This is domex :)"
+`
+
+const sampleData = {
+  name: 'jack',
+  foo: 1,
+  bar: [ 1, 2, [4, 5], "foo", null, undefined, NaN ],
+  obj: { 
+    x: 1,
+    y: 'z',
+    sym: Symbol('hi')
+  },
+  fn: document.createElement
+}
+
+const dx1 = new Domex ($('dx1').firstChild.data)
+log (dx1)
+
+dobo.append (sample.render().elems, dx1.render (sampleData) .elems)
+
+</script>
+</body>
+</html>

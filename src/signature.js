@@ -37,7 +37,7 @@ const signature = {
       { declare:   assoc   `[;]` }, // TODO also allow it in postfix pos
       { orelse:    assoc   `[|]` },
       { descend:   infix   `[>]`
-      , append:    assoc   `[+]` },
+      , append:    infix   `[+]` },
       { class:     postfix `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , hash:      postfix `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , def:       postfix `[@] [a-zA-Z] [a-zA-Z0-9]*`
@@ -45,7 +45,8 @@ const signature = {
       , test:      postfix `[:] [a-zA-Z] [a-zA-Z0-9]*`
       , bind:      postfix `[~] [a-zA-Z] [a-zA-Z0-9]*`
       , iter:      postfix `[*] [a-zA-Z0-9]*`
-      , attr:    [POSTFIX, `[[]`,  'Attr',  `[\]]`] } // wrapfix-postfix
+      , attr:    [POSTFIX, `[[]`,  'Attr',  `[\]]`]  // wrapfix-postfix
+      , addtext: [POSTFIX, `["]`,  'Chars',  `["]`] } // wrapfix-postfix
     ],
 
   },
@@ -89,8 +90,8 @@ const signatures = hoop.compile (signature)
 const additional = {
   void:      tokenType (),
   letin:     tokenType (),
-  withlib:   tokenType (),
-  withdata:  tokenType (),
+  withlib:   tokenType (), // [[T.withlib, lib], expr]
+  context:   tokenType (), // [[T.context, ctx], expr]
 }
 
 // Collecting the types for export
@@ -105,7 +106,7 @@ for (const sig in signatures)
 
 const typeNames = { }
 for (let k in nodeTypes)
-  typeNames[typeNames[k]] = k
+  typeNames[nodeTypes[k]] = k
 
 
 // Configuring the parser

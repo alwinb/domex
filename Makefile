@@ -3,7 +3,7 @@
 srcdir = src/
 files = signature.js hoop2.js compile.js eval.js dom.js index.js browser.js 
 bundle-name = domex
-bundle-entry = index.js
+bundle-entry = browser.js
 sources = $(addprefix $(srcdir), $(files))
 
 run: all

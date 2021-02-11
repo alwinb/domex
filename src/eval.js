@@ -43,7 +43,7 @@ function unfold (expr, context = {})  {
     return unfold (expr[1], { data, key, lib:scope })
   }
 
-  case T.withdata: {
+  case T.context: { // 'withcontext'
     return unfold (expr[1], op[1])
   }
 
@@ -77,44 +77,43 @@ function unfold (expr, context = {})  {
   }
 
   case T.iter: {
-    const body = expr[1]
-    let sibs2 = [[T.append, '+']]
-    let [elem, subs, sibs] = [null, VOID, VOID]
-    if (op[1].length > 1) data = data == null ? undefined : data[op[1] .substr(1)]
-    if (data != null) for (let [key,v] of Object.entries (data)) { // TODO make lazy
-      const ctx = { data:v, key, lib };
-      if (!elem) [elem, subs, sibs] = unfold (body, ctx)
-      else { sibs2 [sibs2.length] = [[T.withdata, ctx], body] }
+    if (data == null)
+      return [null, VOID, VOID]
+
+    else if (!(ITER in data)) {
+      data = (op[1].length > 1)
+        ? iterate (data[op[1] .substr(1)])
+        : iterate (data)
+      data[ITER] = true
+      return unfold (expr, { data, key, lib })
     }
-    if (sibs2.length === 1) sibs2 = VOID
-    if (sibs2.length === 2) sibs2 = sibs2[1]
-    // log ('iter', { elem, subs, sibs, sibs2 })
-    return [elem, subs, append (sibs, sibs2)]
+
+    else {
+      // NB data is a stateful iterator
+      const item = data.next ()
+      if (item.done) return [null, VOID, VOID]
+      const [key, value] = item.value
+      const [elem, subs, sibs] = unfold (expr[1], { data:value, key, lib })
+      const sibs2 = sibling (sibs, [[T.context, context], expr])
+      return [elem, subs, sibling (sibs, sibs2)]
+    }
   }
 
   case T.descend: {
     // TODO what about (a + b) > c ?
     const [elem, subs, sibs] = unfold (expr[1], context)
     if (!elem) return [null, VOID, VOID]
-    const subs2 = [[T.withdata, { data, key, lib }], expr[2]]
+    const subs2 = [[T.context, { data, key, lib }], expr[2]]
     // log ('descend', { expr, subs, subs2 })
     return [elem, append (subs, subs2), sibs]
   }
 
-  case T.append: {
-    for (let i=1,l=expr.length; i<l; i++) {
-      const [elem, subs, sibs] = unfold (expr[i], context)
-      if (elem != null) {
-        // TODO prefer to not slice the expr, come up with something else
-        // also, prevent superfluous withData nodes
-        let _expr = [[T.append, '+'], ...expr.slice (i+1)]
-        if (_expr.length === 1) _expr = VOID
-        else if (_expr.length === 2) _expr = _expr[1]
-        const sibs2 = [[T.withdata, { data, key, lib }], _expr]
-        return [elem, subs, append (sibs, sibs2)]
-      }
-    }
-    return [null, VOID, VOID]
+  case T.sibling: {
+    const [elem, subs, sibs] = unfold (expr[1], context)
+    if (elem == null) return unfold (expr[2], context)
+    // TODO prevent superfluous withContext nodes (check that)
+    const sibs2 = [[T.context, context], sibling (sibs, expr[2])]
+    return [elem, subs, sibs2] // TODO should subs be passed the context?
   }
 
   case T.orelse: {
@@ -179,6 +178,17 @@ function evalAttribute ([[tag,opdata]], context) {
     default: return opdata
   }
 }
+
+
+// Data Analysis
+// -------------
+
+const ITER = Symbol ('unfold.generator')
+function* iterate (data) {
+  if (data != null) yield* Object.entries (data)
+}
+
+
 
 
 // Exports
