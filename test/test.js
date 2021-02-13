@@ -5,6 +5,7 @@ const { DomEx, domex } = require ('../src')
 // ====
 
 var sampleData = { name:'test', bar:undefined, foo:null, arr:[1,2,'x',3] }
+//var sampleData = [1,null,'x',3]
 
 var sample = domex `ul > li > a [href="#"] > "hello, world"`
   //.renderTo (null, process.stdout)
@@ -21,7 +22,11 @@ var sample = domex `
 | dl   .unknown              > di* > (dt > $) + (dd > @default)
 ) @default;
 
-body > div > @default
+body
+  > h1 "Test Domex :)"
+  + @default
+  + hr + hr + hr
+  + @default
 `
 
 sample.renderTo (sampleData, process.stdout)

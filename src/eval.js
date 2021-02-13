@@ -116,6 +116,13 @@ function unfold (expr, context = {})  {
     return [elem, subs, sibs2] // TODO should subs be passed the context?
   }
 
+  case T.append: {
+    const [elem, subs, sibs] = unfold (expr[1], context)
+    if (elem == null) return [null, VOID, VOID]
+    const subs2 = append (subs, [[T.context, context], expr[2]])
+    return [elem, subs2, sibs]
+  }
+
   case T.orelse: {
     for (let i=1,l=expr.length; i<l; i++) {
       const [elem, subs, sibs] = unfold (expr[i], context)
