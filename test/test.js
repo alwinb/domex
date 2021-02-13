@@ -4,7 +4,7 @@ const { DomEx, domex } = require ('../src')
 // Test
 // ====
 
-var sampleData = { name:'test', bar:undefined, foo:null, arr:[1,2,'x',3] }
+var sampleData = { name:'Joe', bar:undefined, foo:null, arr:[1,2,'x',3] }
 //var sampleData = [1,null,'x',3]
 
 var sample = domex `ul > li > a [href="#"] > "hello, world"`
@@ -18,12 +18,13 @@ var sample = domex `
 | span::function  .function  > "function " + %name
 | span::undefined .undefined > "undefined"
 | ul  ::array     .array     > li* > @default
-| dl  ::object    .object    > di* > (dt > $) + (dd > @default)
-| dl   .unknown              > di* > (dt > $) + (dd > @default)
+| dl  ::object    .object    > di* > dt $ + (dd > @default)
+| dl   .unknown              > di* > dt $ + (dd > @default)
 ) @default;
 
 body
   > h1 "Test Domex :)"
+  + p %name
   + @default
   + hr + hr + hr
   + @default

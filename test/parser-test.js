@@ -27,7 +27,9 @@ const samples = [
   'a + b + c | d + e + f | g | h [i=j]',
   '\n( span::number    .number    > %)',
   'a@one [foo="bee\\bar"] > (b | c) +d ; two@a > three',
-  `elem "bar" + bee`
+  `elem "bar" + bee`,
+  `h1 %title`,
+  `span $`
 ]
 
 for (const sample of samples) {

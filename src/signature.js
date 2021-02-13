@@ -45,8 +45,10 @@ const signature = {
       , test:      postfix `[:] [a-zA-Z] [a-zA-Z0-9]*`
       , bind:      postfix `[~] [a-zA-Z] [a-zA-Z0-9]*`
       , iter:      postfix `[*] [a-zA-Z0-9]*`
-      , attr:    [POSTFIX, `[[]`,  'Attr',  `[\]]`]  // wrapfix-postfix
-      , addtext: [POSTFIX, `["]`,  'Chars',  `["]`] } // wrapfix-postfix
+      , addvalue:  postfix `[%] [a-zA-Z0-9_\-]*`
+      , addkey:    postfix `[$]`
+      , addtext: [POSTFIX, `["]`,  'Chars',  `["]`]   // wrapfix-postfix
+      , attr:    [POSTFIX, `[[]`,  'Attr',     `]`] } // wrapfix-postfix
     ],
 
   },

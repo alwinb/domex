@@ -111,10 +111,23 @@ function preEval (...expr) {
       return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
     }
 
-    case T.addtext: { // wrapfix-postfix operator
-      // convert to private append operator
+    // ### Dom append operators -- convert postfix to private infix
+
+    case T.addtext: { // wrapfix-postfix
       const expr = [[T.append, " "], y.expr, [[T.text, x]]]
       return { ops: y.ops, name:y.name, expr }
+    }
+
+    case T.addkey: {
+      const expr = [[T.append, " "], x.expr, [[T.key, '$']]]
+      return { ops: x.ops, name:x.name, expr }
+    }
+
+    case T.addvalue: {
+      let vexpr = [[T.value, data]]
+      if (data.length > 1) vexpr = [[T.bind, '~'+data.substr(1)], vexpr]
+      const expr = [[T.append, " "], x.expr, vexpr]
+      return { ops: x.ops, name:x.name, expr }
     }
 
     // ### Attributes
