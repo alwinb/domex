@@ -37,7 +37,7 @@ const signature = {
       { declare:   assoc   `[;]` }, // TODO also allow it in postfix pos
       { orelse:    assoc   `[|]` },
       { descend:   infix   `[>]`
-      , append:    infix   `[+]` },
+      , sibling:   infix   `[+]` },
       { class:     postfix `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , hash:      postfix `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , def:       postfix `[@] [a-zA-Z] [a-zA-Z0-9]*`
@@ -92,6 +92,7 @@ const additional = {
   letin:     tokenType (),
   withlib:   tokenType (), // [[T.withlib, lib], expr]
   context:   tokenType (), // [[T.context, ctx], expr]
+  append:    tokenType (),
 }
 
 // Collecting the types for export

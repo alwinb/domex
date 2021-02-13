@@ -61,7 +61,7 @@ function preEval (...expr) {
 
     // ### Dom operators (infix)
 
-    case T.append:
+    case T.sibling:
     case T.orelse: {
       const _expr = [expr[0]]
       for (let i=1, l=expr.length; i<l; i++) _expr[i] = bindDefs (expr[i])

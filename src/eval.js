@@ -1,5 +1,5 @@
 const log = console.log.bind (console)
-const { nodeTypes:T, parse } = require ('./signature')
+const { nodeTypes:T, typeNames:N, parse } = require ('./signature')
 
 // unfold: takes an expression and its input data
 // and returns a one-element unfolding [elem, subs-expr, siblings-expr]
@@ -94,8 +94,8 @@ function unfold (expr, context = {})  {
       if (item.done) return [null, VOID, VOID]
       const [key, value] = item.value
       const [elem, subs, sibs] = unfold (expr[1], { data:value, key, lib })
-      const sibs2 = sibling (sibs, [[T.context, context], expr])
-      return [elem, subs, sibling (sibs, sibs2)]
+      const sibs2 = append (sibs, [[T.context, context], expr])
+      return [elem, subs, append (sibs, sibs2)]
     }
   }
 
@@ -112,7 +112,7 @@ function unfold (expr, context = {})  {
     const [elem, subs, sibs] = unfold (expr[1], context)
     if (elem == null) return unfold (expr[2], context)
     // TODO prevent superfluous withContext nodes (check that)
-    const sibs2 = [[T.context, context], sibling (sibs, expr[2])]
+    const sibs2 = [[T.context, context], append (sibs, expr[2])]
     return [elem, subs, sibs2] // TODO should subs be passed the context?
   }
 
@@ -142,16 +142,15 @@ function unfold (expr, context = {})  {
     return [elem, subs, sibs]
   }
 
-  // default:
-  //   log (expr)
-  //   throw new Error (expr)
+  default:
+    throw new TypeError (`eval: unknown operator type: ${tag} ${N[tag]}`)
   }
 }
 
 function append (x, y) {
   if (x[0][0] === T.void) return y
   if (y[0][0] === T.void) return x
-  return [[T.append, '+'], x, y]
+  return [[T.sibling, '+'], x, y]
 }
 
 // ### Attribute evaluation
