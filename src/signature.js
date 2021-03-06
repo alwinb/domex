@@ -40,12 +40,12 @@ const signature = {
       , sibling:   infix   `[+]` },
       { class:     postfix `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , hash:      postfix `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
-      , def:       postfix `[@] [a-zA-Z] [a-zA-Z0-9]*`
-      , ttest:     postfix ` :: [a-zA-Z] [a-zA-Z0-9]*`
-      , test:      postfix `[:] [a-zA-Z] [a-zA-Z0-9]*`
-      , bind:      postfix `[~] [a-zA-Z] [a-zA-Z0-9]*`
-      , iter:      postfix `[*] [a-zA-Z0-9]*`
-      , addvalue:  postfix `[%] [a-zA-Z0-9_\-]*`
+      , def:       postfix `[@] [a-zA-Z_] [a-zA-Z0-9_]*`
+      , ttest:     postfix ` :: [a-zA-Z_] [a-zA-Z0-9_]*`
+      , test:      postfix `[:] [a-zA-Z_] [a-zA-Z0-9_]*`
+      , bind:      postfix `[~] [a-zA-Z_] [a-zA-Z0-9_]*` // TODO what about numeric keys?
+      , iter:      postfix `[*] (?:[a-zA-Z_] [a-zA-Z0-9_]*)?`
+      , addvalue:  postfix `[%] (?:[a-zA-Z_] [a-zA-Z0-9_]*)?`
       , addkey:    postfix `[$]`
       , addtext: [POSTFIX, `["]`,  'Chars',  `["]`]   // wrapfix-postfix
       , attr:    [POSTFIX, `[[]`,  'Attr',     `]`] } // wrapfix-postfix
