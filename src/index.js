@@ -8,6 +8,17 @@ const { _render } = require ('./dom.js')
 // Domex
 // =====
 
+const lib = { '@default': bindDefs (parse (`
+  ( span::number    .number    > %
+  | span::string    .string    > %
+  | span::boolean   .boolean   > %
+  | span::null      .null      > "null"
+  | span::function  .function  > "function " + %name
+  | span::undefined .undefined > "undefined"
+  | ul  ::array     .array     > li* > @default
+  | dl  ::object    .object    > di* > dt $ + (dd > @default)
+  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)) }
+
 class DomEx {
 
   constructor (string) {
@@ -26,12 +37,12 @@ class DomEx {
   } 
   
   renderTo (data, stream, _end) {
-    for (const chunk of _render (this.ast, { data }))
+    for (const chunk of _render (this.ast, { data, lib }))
       stream.write (chunk)
   }
 
   *render (data) {
-    yield* _render (this.ast, { data })
+    yield* _render (this.ast, { data, lib })
   }
 
 }

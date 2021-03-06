@@ -10,6 +10,18 @@ const unfold = createUnfold ({ createElement, createTextNode })
 // Domex
 // =====
 
+const lib = { '@default': bindDefs (parse (`
+  ( span::number    .number    > %
+  | span::string    .string    > %
+  | span::boolean   .boolean   > %
+  | span::null      .null      > "null"
+  | span::function  .function  > "function " + %name
+  | span::undefined .undefined > "undefined"
+  | ul  ::array     .array     > li* > @default
+  | dl  ::object    .object    > di* > dt $ + (dd > @default)
+  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)) }
+
+
 class DomEx {
 
   constructor (string) {
@@ -17,14 +29,14 @@ class DomEx {
   }
 
   render (data) {
-    const context = { data }
+    const context = { data, lib }
     const frag = document.createDocumentFragment ()
     let { elem, deriv } = render1 (this.ast, context)
     while (elem) {
       frag.append (elem);
       ({ elem, deriv } = render1 (deriv, context))
     }
-    return { elem, elems:frag }
+    return { elem:frag.childNodes[0], elems:frag }
   }
 }
 
