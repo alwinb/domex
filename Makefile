@@ -11,10 +11,10 @@ run: all
 all: dist/$(bundle-name).js dist/$(bundle-name).min.js
 
 dist/$(bundle-name).min.js: dist/ $(sources)
-	npx esbuild $(srcdir)$(bundle-entry) --platform=node --minify --bundle --outfile=dist/$(bundle-name).min.js
+	esbuild $(srcdir)$(bundle-entry) --minify --bundle --outfile=dist/$(bundle-name).min.js
 
 dist/$(bundle-name).js: dist/ $(sources)
-	npx esbuild $(srcdir)$(bundle-entry) --platform=node --bundle --outfile=dist/$(bundle-name).js
+	esbuild $(srcdir)$(bundle-entry) --bundle --outfile=dist/$(bundle-name).js
 
 dist/:
 	mkdir dist/
