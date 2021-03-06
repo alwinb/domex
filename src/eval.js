@@ -80,7 +80,7 @@ function unfold (expr, context = {})  {
     if (data == null)
       return [null, VOID, VOID]
 
-    else if (!(ITER in data)) {
+    else if (typeof data !== 'object' || !(ITER in data)) {
       data = (op[1].length > 1)
         ? iterate (data[op[1] .substr(1)])
         : iterate (data)
