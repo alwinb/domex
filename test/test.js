@@ -4,7 +4,7 @@ const { DomEx, domex } = require ('../src')
 // Test
 // ====
 
-var sampleData = { name:'Joe', bar:undefined, foo:null, arr:[1,2,'x',3] }
+var sampleData = { name:'Joe', bar:undefined, foo:null, arr:[1,2,'x',3], empty:[] }
 //var sampleData = [1,null,'x',3]
 
 var sample = domex `ul > li > a [href="#"] > "hello, world"`
@@ -28,6 +28,9 @@ body
   + @default
   + hr + hr + hr
   + @default
+  + input[value=%] ~name
+  + div:length $ " has length" ~empty
+  + div:length $ " has length" ~arr
 `
 
 sample.renderTo (sampleData, process.stdout)
@@ -36,8 +39,8 @@ sample.renderTo (sampleData, process.stdout)
 // var sample = domex `a[class=foo].b [class=" c d "].e`
 // sample.renderTo (sampleData, process.stdout)
 
-var sample = domex `"test".name`
-sample.renderTo (sampleData, process.stdout)
+// var sample = domex `"test".name`
+// sample.renderTo (sampleData, process.stdout)
 
 // var sample = domex `"one":string + "two"`
 // sample.renderTo (sampleData, process.stdout)

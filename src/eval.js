@@ -72,8 +72,8 @@ function unfold (expr, context = {})  {
   case T.test: {
     let test = op[1] .substr (1)
     let _value = data == null ? false : data[test]
-    if (_value == null || _value === false) return [null, VOID, VOID]
-    else return unfold (expr[1], context)
+    if (!_value) return [null, VOID, VOID]
+    else return unfold (expr[1], context) // TODO add to classList, I think?
   }
 
   case T.iter: {
