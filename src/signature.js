@@ -75,8 +75,8 @@ const signature = {
       { strChars:  atom `[^\x00-\x19\\"]+`
       , escape:    atom `[\\]["/\\bfnrt]`
       , hexescape: atom `[\\]u[a-fA-F0-9]{4}`
-      , empty:     atom `.{0}` },
-      { strCat:   infix `.{0}` }
+      , empty:     atom `.{0}(?=")` },
+      { strCat:   infix `.{0}(?!")` }
     ],
   },
 }
