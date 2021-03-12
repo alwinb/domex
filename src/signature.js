@@ -81,7 +81,7 @@ const signature = {
   },
 }
 
-const signatures = hoop.compile (signature)
+const compiled = hoop.compile (signature)
 
 // Node types/ tags
 // ----------------
@@ -103,9 +103,9 @@ const nodeTypes = {}
 for (let k in additional)
   nodeTypes[k] = additional[k][1]
 
-for (const sig in signatures)
-  for (const k in signatures[sig].types)
-    nodeTypes[k] = signatures[sig].types[k]
+for (const sig in compiled.types)
+  for (const k in compiled.types[sig])
+    nodeTypes[k] = compiled.types[sig][k]
 
 const typeNames = { }
 for (let k in nodeTypes)
@@ -116,9 +116,9 @@ for (let k in nodeTypes)
 // ----------------------
 
 function parse (input, apply) {
-  const S0 = signatures.Dom.Before.next ('(')
-  const E0 = signatures.Dom.After.next (')')
-  const p = new hoop.Parser (signatures, S0, E0, apply)
+  const S0 = compiled.lexers.Dom.Before.next ('(')
+  const E0 = compiled.lexers.Dom.After.next (')')
+  const p = new hoop.Parser (compiled.lexers, S0, E0, apply)
   return p.parse (input)
 }
 
@@ -126,4 +126,4 @@ function parse (input, apply) {
 // Exports
 // -------
 
-module.exports = { signatures, nodeTypes, typeNames, parse }
+module.exports = { nodeTypes, typeNames, parse }

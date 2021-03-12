@@ -3,6 +3,9 @@ const log = console.log.bind (console)
 // HOOP Parser
 // ===========
 
+// 'Higher Order Operator Precedence Parser'
+// :D
+
 // Grammar Compiler
 // ----------------
 
@@ -72,22 +75,23 @@ function oneOf (tokens) {
 }
 
 function compile (grammar) {
-  const lexers = {}
-  for (let ruleName in grammar) {
+  const lexers = {}, types = {}
+  for (const ruleName in grammar) {
     const r = grammar[ruleName]
-    lexers [ruleName] = new Lexer (ruleName, r, grammar)    
+    const { types:_types, lexer } = compileRule (ruleName, r, grammar)
+    lexers [ruleName] = lexer
+    types [ruleName] = _types
   }
-  return lexers
+  return { lexers, types }
 }
 
-
-// Two- state lexer,
+// Two- state lexer for hoop grammars,
 // compiled from a single 'rule'
 
-function Lexer (ruleName, rule, grammar) {
+function compileRule (ruleName, rule, grammar) {
   const { end, skip = {}, sig = [] } = rule
-  const types = (this.types = {})
   const befores = [], afters = []
+  const types = {}
 
   for (const k in skip) {
     const x = skip[k]
@@ -116,13 +120,11 @@ function Lexer (ruleName, rule, grammar) {
     if (info[1] & (PREFIX | LEAF)) befores.push (info)
     else afters.push (info) // default precedence
   }
-
-  this.name = ruleName
-  // log ({befores, afters})
-  Object.defineProperties (this, {
-    Before: { value: oneOf (befores) },
-    After: { value: oneOf (afters) }
-  })
+  
+  const name = ruleName
+  const Before = oneOf (befores)
+  const After = oneOf (afters)
+  return { name, types, lexer: {name, Before, After}}
 }
 
 
@@ -169,7 +171,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
           const p = Math.max (lastnl, position-80)
           _ER.lastIndex = lastnl
           const snip = _ER.exec (input)[1]
-          throw new SyntaxError (`Invalid DOM expression. ` +
+          throw new SyntaxError (`Invalid expression. ` +
             `At line ${line}:${position - lastnl}:\n\n` +
             `\t\t${snip}\n` +
             `\t\t${'^'.padStart(position - lastnl + 1)}`)
@@ -185,7 +187,6 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 
     // token :: [type+role, value, info]
     const role = group ? group[0][0] : token[0] 
-    const info = group ? group[0][2] : token[2]
 
     /*
     let debug = []
@@ -193,7 +194,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
       if (role & Roles[k]) debug.push (k)
     debug = debug.join('|')
     log (debug, token, group)
-    log ({ position, lastnl })
+    log ({ position, lastnl }, '\n')
     //*/
 
     // Operator -- first apply ops of higher precedence
@@ -201,28 +202,32 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     let l = role & (LEAF | START | SKIP) ? -1 : ops.length-1
     for (; l >= 0; l--) {
       // TODO I suspect that this breaks with HOOPs (ie 'groups' on ops stack)
-      const op = ops[l]
-      const useStack = (role & END) || precedes (op, token)
+      const item = ops[l] // either an op, or a hoop
+      const op = typeof item[0] === 'number' ? item : item[0]
+      const useStack = role & END || precedes (op, token)
       if (!useStack) break
       ops.length--
       const arity = op[3]
       const i = builds.length - arity
-      op.length = 2 // remove precedence/ arity info
-      builds[i] = apply (op, ...builds.splice (i, arity))
+      op.length = 2 // remove precedence and arity info
+      builds[i] = op[0] & GROUP
+        ? apply (...item.concat (builds.splice (i, arity))) // flatten hoop
+        : apply (item, ...builds.splice (i, arity))
     }
 
     // END - Collapses the shunting yard into a 'token'
 
     if (role & END) {
       context.pop ()
-      const precedence = opener[2]
-      const type = opener[0]
+      const [type, data1, precedence] = opener
       // Unset the START bit, add the GROUP bit
-      const type_ = (type & ~START) | GROUP
-      token = [[type_, opener[1] + token[1]], builds[0]];
+      const type_ = type & ~START | GROUP
+      const hoop  = [type_, data1 + token[1]]
+      const arity = type_ & PREFIX ? 1 : type_ & INFIX|ASSOC ? 2 : 0 // arity
+      token = [hoop, builds[0]];
       group = token
-      if (!context.length) return apply (...token)
-      if (type & (PREFIX | INFIX | ASSOC | POSTFIX)) token.push (precedence)
+      if (!context.length) return apply (...group)
+      if (arity) hoop.push (precedence, arity)
       ;({ opener, ops, builds, lexer } = context [context.length-1])
       continue
     }
@@ -233,8 +238,8 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
 
     if (role & START) { 
       opener = token
-      const name = opener[3] // [type, value, precedence, lexer-name]
-      // log ('START', info, token)
+      const name = opener[3] // [type, value, precedence, lexerName]
+      // log ('START', token)
       ops    = []
       builds = []
       lexer  = lexers [name]
@@ -248,23 +253,28 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     }
 
     else if (ops.length && (role & ASSOC) && token[0] === ops[ops.length-1][0]) {
+      // FIXME op might be a hoop; how does that work; ASSOC hoops?
       ops[ops.length-1][3]++ // increment the arity
       state = PRE
     }
 
     else if (role & (PREFIX | INFIX | ASSOC)) { // Err if state is Before
-      ops[ops.length] = token // op :: [type+role, value, precedence, arity]
-      token[3] = token[0] & PREFIX ? 1 : 2 // arity
+      ops[ops.length] = token
+      const op = role & GROUP ? token[0] : token // op :: [type|role, data, precedence, arity]
+      op[3] = op[0] & PREFIX ? 1 : 2 // arity
       state = PRE
     }
 
     else if (role & POSTFIX) { // TODO Err if state is Before
       const i = builds.length-1
-      token.length = 2 // remove precedence/ arity info
-      if (typeof token[0] !== 'number') // NB flattening HOOP
+      if (role & GROUP) { // NB flattening HOOP
+        token[0].length = 2 // remove precedence/ arity info
         builds[i] = apply (...token, builds[i])
-      else
+      }
+      else {
+        token.length = 2 // remove precedence/ arity info
         builds[i] = apply (token, builds[i])
+      }
       state = POST
     }
 
