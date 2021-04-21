@@ -56,4 +56,8 @@ const domex = (...args) =>
 // Exports
 // =======
 
-module.exports = { DomEx, Domex:DomEx, domex }
+module.exports = {
+  version:'0.6.0',
+  DomEx, domex,
+  Domex: DomEx
+}

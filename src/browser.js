@@ -62,7 +62,12 @@ const domex = (...args) =>
 // Exports
 // =======
 
-const exports = { DomEx, Domex:DomEx, domex }
+const exports = {
+  version:'0.6.0',
+  DomEx, domex,
+  Domex: DomEx
+}
+
 let wmodule = window.modules = window.modules || {}
 wmodule.domex = exports 
 })()
