@@ -22,15 +22,9 @@ function bindDefs ({ expr, ops, name }) {
   return expr
 }
 
-const _escapes = {
-  '\\/': '/',
-  '\\\\':'\\',
-  '\\b': '\b',
-  '\\f': '\f',
-  '\\n': '\n',
-  '\\r': '\r',
-  '\\t': '\t',
-}
+const _escapes =
+  { 'b':'\b','f':'\f','n':'\n','r':'\r','t':'\t' }
+
 
 // The Algebra
 // -----------
@@ -157,7 +151,7 @@ function preEval (...expr) {
     // ### Strings
 
     case T.strChars:  return data
-    case T.escape:    return _escapes [data]
+    case T.escape:    return _escapes [data[1]] || data[1]
     case T.empty:     return ''
     case T.hexescape: return String.fromCodePoint (parseInt (data.substr(2), 16))
     case T.strCat:    return x + y
