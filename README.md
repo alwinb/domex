@@ -1,42 +1,50 @@
-DOM Expression
-==============
+Domex
+=====
 
-**Note** —  Work in progress —  Going well — v0.1.0.
+Domex is an expression language for creating DOM trees from input data. In Domex, expressions denote render **functions** that take structured data as input to a sequence of DOM Nodes as output; or to the HTML serialisation thereof. 
 
-A new expression language for constructing DOM trees from data!
+Domex serves the purpose of a template language, even though it isn't really a template language in the traditional sense. It is... different. 
+It takes on some of the characteristics of a specification or a data description language. 
 
-The language is inspired by [Emmet][1], which I think is a really nice algebraic language. DOM Expressions are similar, but unlike Emmet expressions, they define how to convert input data to a DOM tree. Thus, they define render functions. This means that they serve the same purpose as a template language. 
+Part of the language is inspired by [Emmet][1], which I think is a really nice algebraic language.  
 
-DOM Expressions are very concise and they look quite a bit like datatype declarations of functional languages. 
-So I think of them as a description language for the graphical user interface of a web application. I have some ideas for creating a library for web UI component programming with it.  
-
-At the moment it is a **very small** library, the minified version is around **4k** bytes. 
-
+The main design goal is to create a language that relates input data to HTML in a way that makes progressive enhancement just as easy as the combination of HTML and CSS does. 
 
 [1]: https://docs.emmet.io/abbreviations/
 
-Example
--------
+Examples
+--------
+
+Some examples to get an impression. 
+The examples consists of three sections:
+
+1. The Domex ("DOM expression"),
+2. The input data, here as JSON,
+3. The HTML output, with whitespace added for readability. 
 
 **Lists**
 
-A simple example for building lists: The following results in a DOM tree for the HTML below it. (I've added whitespace to the HTML for readability). 
-
-```javascript
-dom `ul > (li %)*` ([1,2,3]) .elem
+```domex
+ ul > li* %
+```
+```json
+[ "One", "Two", "Three" ]
 ```
 ```html
 <ul>
-  <li>1</li>
-  <li>2</li>
-  <li>3</li>
- </ul>
+  <li>One</li>
+  <li>Two</li>
+  <li>Three</li>
+</ul>
 ```
 
-Another example, for building definition lists from objects:
+**Definition Lists**
 
-```javascript
-dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem
+```domex
+dl > (dt $ + dd %)*
+```
+```json
+{ "foo":1, "bar":2 }
 ```
 ```html
 <dl>
@@ -45,97 +53,96 @@ dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem
 </dl>
 ```
 
-
 **Recursion**
 
-It is possible to construct recursive DOM expressions. 
-Currently you need to do a bit of extra work to set up a 'library' object of DOM expressions to make the recursive references work and pass that as a second argument to `render`.
+An example that renders nested lists, illustrating a named expression `ul@list > …`, iteration `(…)*`, a recursive reference `@list`, a type test `…::array` and an alternative branch `… | li %`.
 
-**TODO**
+```domex
+ul@list > (@list::array | li %)*
+```
+```json
+[1,[2,3,[4,5]],6]
+```
+```html
+<ul>
+  <li>1</li>
+  <ul>
+    <li>2</li>
+    <li>3</li>
+      <ul>
+        <li>4</li>
+        <li>5</li>
+      </ul>
+    </ul>
+  <li>6</li>
+</ul>
+```
 
-Grammar
--------
+**JSON renderer**
 
-<center>
-**Expressions**
+The following domex can be used to render JSON structures to nested `<ul>` and `<dl>` elements. 
 
-_E_ ::=   
+```domex
+( dl::object > di* > dt $ + (dd > @json)
+| ul::array  > li* > @json
+| span::null > "null"
+| span %
+) @json
+```
 
-tag-name     |     Ident  
+**Login Form**
 
-_E_ `|` _E_     |     _E_ `>` _E_     |     _E_ `+` _E_  
+An example that illustrates the use of a declaration `form @login > … ;` and static and dynamic attributes. 
 
-_E_ `*`     |     _E_ `*`prop     |     _E_ `~`prop     |     _E_ `?`test  
+```domex
+// lib
 
-`(` _E_ `)`  
-
-_E_ `[`attr`=`prop`]`     |     _E_ `.`class     |     _E_ `#`id     |     _E_ `&`ref  
-
-_E_ `{`text`}` |     _E_ `$`     |     _E_ `%`     |     _E_ `%`prop  
-</center>
-
-**TODO**  
-
-- Review the operator precedence;
-- Add `%` et al. as atoms as well;  
-- Add **Recursion** and/ or references;  
-- Consider adding _E_`*`_prop_.
-
-Semantics
----------
-
-DOM Expressions denote render **functions** that take structured data as input to a list of DOM Nodes as output<sup>1</sup>.
-
-**TODO:** Examples
-
-<small>1</small>: together with a dictionary of stored references to specific elements. 
-
-### Basic Combinators
-
-- _element-name_ — creates a singleton list with a single _element-name_-element.
-- _E1_ `>` _E2_ — adds _E2_ as children to the last element of _E1_.
-- _E1_ `+` _E2_ — adds _E2_ as siblings to _E1_.
-
-### Repetition :=: Decomposition
-
-- _E_`*` — evaluates _E_ against each key-value pair in the current input and combines the results into a list of siblings. 
-- _E_`?`_test_ — runs a test named _test_ against the current input and evaluates _E_ if true, or returns an empty sequence otherwise. 
-- _E1_ `|` _E2_ — the 'or-else' operator – is equivalent to _E2_ if _E1_ evaluates to an empty list, otherwise it is equivalent to _E1_. 
+form @login
+  > h1 "Login"
+  + (label "name" > input [name="name" value=%name])
+  + button "login";
 
 
-Note that the `*` operator can be nested.  
+// html
 
-### Attributes and References
+html
+  > (head > title "login")
+  + body > @login
+```
+```json
+{ "name": "joe" }
+```
+```html
+<html>
+  <head>
+    <title>login</title>
+  </head>
+  <body>
+    <form>
+      <h1>Login</h1>
+      <label>name<input name="name" value="joe"></label>
+      <button>login</button>
+    </form>
+  </body>
+</html>
+```
 
-- _E_`.`_class_ — adds _class_ to the `class` attribute of the last element of _E_.
-- _E_`#`_id_ — sets the `id` attribute of the last element of _E_ to _id_.
-- _E_`@`_ref_ — evaluates _E_ and **keeps a reference** to its last element under the name _ref_. (This is very useful — Refer to the API section to see how this can be used). 
-- **TODO:** consider adding Emmet-style attributes, such as `[attr=value]`)
+Language
+--------
 
-### Text and Data
+The documentation for the grammar and the semantics of the language so far, can be found [here][domex-lang]
 
-- _E_ `%` — Appends the key of the current input to the last element of _E_ as a text node. 
-- _E_ `%` — Appends a string representation of the current input to the last element of _E_. 
-- _E_ `%`_prop_ — Appends a string representation of the current input's _prop_ property to the last element of _E_. 
-- _E_ `{`_text_`}` — appends literal text _text_ to the last element of _E_.
+[domex-lang]: doc/domex-lang.md
 
 API
 ---
 
-**TODO**
-
-- DomEx
-  - constructor (expressionString)
+- domex 
+  A template–literal tag. Returns a new DomEx object. 
+- Domex class
+  - constructor (domex-string)
   - render (data)
-- RenderResult
-  - elem
-  - elems
-  - refs
-- DataSource
-  - iter
-  - test
-  - get
-
+  - renderTo (data, writable)
 
 Licence
 -------
