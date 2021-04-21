@@ -33,6 +33,15 @@ body
   + div:length $ " has length" ~arr
 `
 
+var sample = domex `
+( dl::object > di* > dt $ + (dd > @json)
+| ul::array  > li* > @json
+| span::null "null"
+| span %
+) @json
+`
+var sampleData = [1,2,34, {a:2, b:[1,2]}]
+
 sample.renderTo (sampleData, process.stdout)
 //process.exit (205)
 
