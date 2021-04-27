@@ -54,18 +54,28 @@ class ClassList extends Array {
   }
 }
 
-function createTextNode (data) {
-  return data
+// Instantiate the evaluator
+// -------------------------
+
+function UnsafeRaw (data) {
+  this.value = data
 }
 
-function createElement (tagName) {
-  return new Element (tagName)
-}
+const createTextNode = data =>
+  data
 
-const unfold = createUnfold ({ createElement, createTextNode })
+const _createRawHTMLNode = data =>
+  new UnsafeRaw (data)
+
+const createElement = tagName =>
+  new Element (tagName)
 
 
-// Render to html / stream
+const unfold =
+  createUnfold ({ createElement, createTextNode, _createRawHTMLNode })
+
+
+// ### Render to html / stream
 
 const voidTags = {
   area:1,    base:1,  basefont:1,
@@ -79,8 +89,13 @@ const voidTags = {
 function* _render (expr, context) {
   const [elem, subs, sibs] = unfold (expr, context)
   if (elem === null) return
+  
   if (typeof elem === 'string')
-    yield elem.replace (/</g, '&lt;') // TODO not in rawtext
+    yield elem.replace (/</g, '&lt;') // FIXME not in rawtext
+  
+  else if (elem instanceof UnsafeRaw)
+    yield elem.value
+
   else {
     yield `<${elem.tagName}${renderAttributes (elem)}>`
     if (!(elem.tagName in voidTags)) {

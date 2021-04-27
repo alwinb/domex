@@ -6,7 +6,7 @@ const { nodeTypes:T, typeNames:N, parse } = require ('./signature')
 
 const VOID = [[T.void, 'ε']]
 
-const createUnfold = ({ createElement, createTextNode }) =>
+const createUnfold = ({ createElement, createTextNode, _createRawHTMLNode }) =>
 function unfold (expr, context = {})  {
   let { data, key, lib = {} } = context
   const op = expr[0], tag = op[0]
@@ -21,6 +21,9 @@ function unfold (expr, context = {})  {
 
   case T.text:
     return [createTextNode (op[1]), VOID, VOID]
+  
+  case T.unsafeRaw:
+   return [_createRawHTMLNode (data == null ? '' : String (data)), VOID, VOID]
 
   case T.key:
     return [createTextNode (key == null ? '' : String (key)), VOID, VOID]

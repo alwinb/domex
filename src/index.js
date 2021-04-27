@@ -1,6 +1,6 @@
 const log = console.log.bind (console)
 const { readFile } = require ('fs')
-const { signatures, parse } = require ('./signature.js')
+const { signatures, parse, nodeTypes:T } = require ('./signature.js')
 const { fold, preEval, bindDefs } = require ('./compile.js')
 const { _render } = require ('./dom.js')
 
@@ -8,7 +8,9 @@ const { _render } = require ('./dom.js')
 // Domex
 // =====
 
-const lib = { '@default': bindDefs (parse (`
+const lib = {
+  
+  '@default': bindDefs (parse (`
   ( span::number    .number    > %
   | span::string    .string    > %
   | span::boolean   .boolean   > %
@@ -17,7 +19,11 @@ const lib = { '@default': bindDefs (parse (`
   | span::undefined .undefined > "undefined"
   | ul  ::array     .array     > li* > @default
   | dl  ::object    .object    > di* > dt $ + (dd > @default)
-  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)) }
+  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)),
+
+  '@unsafe-raw-html': [[T.unsafeRaw, '@unsafe-raw-html']]
+}
+
 
 class DomEx {
 

@@ -95,6 +95,7 @@ const additional = {
   withlib:   tokenType (), // [[T.withlib, lib], expr]
   context:   tokenType (), // [[T.context, ctx], expr]
   append:    tokenType (),
+  unsafeRaw: tokenType (), // [[T.unsafeRaw]]
 }
 
 // Collecting the types for export
