@@ -12,6 +12,7 @@ Grammar
 The abstract syntax of Domex is given by the following grammar. 
 
 <center>
+
 ### DOM Expressions
 
 _E_ ::=   
@@ -78,9 +79,9 @@ DOM Expressions denote render **functions** that take structured data as input t
 
 Shorthands:
 
-- The notation `%`_name_ may be used as a shorthand for `%``~`_name_.  
-- Likewise, _E_ `%`_name_ may be used for _E_ `%``~`_name_.  
-- Likewise, _E_ `*`_name_ is a shorthand for _E_ `*``~`_name_.
+- The notation `%`_name_ may be used as a shorthand for `%` `~`_name_.  
+- Likewise, _E_ `%`_name_ may be used for _E_ `%` `~`_name_.  
+- Likewise, _E_ `*`_name_ is a shorthand for _E_ `*` `~`_name_.
 
 The `*` operator is made to distribute over `>` as follows: (_E1_`*` `>` _E2_)  =  (_E1_ `>`_E2_)`*`.  
 For example, `dl > di* > dt $ + dd %` is equivalent with `dl > (di > dt $ + dd %)*`.
