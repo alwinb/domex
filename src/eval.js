@@ -192,9 +192,17 @@ function evalAttribute ([[tag,opdata]], context) {
 // Data Analysis
 // -------------
 
+function* emptyGenerator (){}
+const Generator = emptyGenerator.constructor
+
 const ITER = Symbol ('unfold.generator')
 function* iterate (data) {
-  if (data != null) yield* Object.entries (data)
+  if (data != null) {
+    if (Symbol.iterator in data) {
+      let i = 0
+      for (let x of data) yield [i++, x] }
+    else yield* Object.entries (data)
+  }
 }
 
 
