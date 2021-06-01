@@ -14,7 +14,7 @@
 <script>
 const log = console.log.bind (console)
 const dobo = document.body
-const { DomEx, dom } = modules.domex;
+const { DomEx, domex, dom } = modules.domex;
 
 // log(
 //   dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
@@ -40,30 +40,18 @@ document.body.append (view)
 // Example - Recursive expressions
 // -------------------------------
 
-const Menu = new DomEx (`ul > (li > a $ + Menu?object)*`)
+const Menu = domex `ul > (li > a $ + Menu::object)*`
+const Json = domex `@default`
 
-const Json = new DomEx (`
-    span .number    ?number    %
-  | span .null      ?null      {null}
-  | span .undefined ?undefined {undefined}
-  | span .boolean   ?boolean   %
-  | span .string    ?string    %
-  | ul   .array     ?array     > (li > Json)*
-  | dl   .object    ?object    > span {object} + (di > dt $ + dd > Json)*
-  | span .function  ?function  {function } %name
-  //| span .unknown              %`)
-
-log (Json.ast)
 // Precedence from low to high:
 // |, <, +, 
 
-const lib = { Menu, Json }
 const sample = { one:1, two:2, three: {foo:4, bar:5}, ux:null, ar:[1,{x:2, y:false, z:null},3, undefined, dom] }
 
-// const menu = lib.Menu.render (sample, lib)
-// dobo.append (menu.elem)
+const menu = Menu.render (sample)
+dobo.append (menu.elem)
 
-const json = lib.Json.render (sample, lib)
+const json = Json.render (window)
 dobo.append (json.elem)
 
 json.elem.addEventListener ('click', evt => {

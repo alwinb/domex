@@ -8,7 +8,7 @@ const VOID = [[T.void, 'ε']]
 
 const createUnfold = ({ createElement, createTextNode, _createRawHTMLNode }) =>
 function unfold (expr, context = {})  {
-  let { data, key, lib = {} } = context
+  let { data, key, lib = {}, marks = {}, depth = 0 } = context
   const op = expr[0], tag = op[0]
   // log ('\nunfold', expr)
 
@@ -31,11 +31,21 @@ function unfold (expr, context = {})  {
   case T.value:
     return [createTextNode (data == null ? '' : String (data)), VOID, VOID]
 
-  case T.component: {
-    const n = op[1]
-    // log ('deref', n, lib[n])
-    // TODO detect cycles
+  case T.deref: {
+    const n = op[1], t = typeof data
     if (!(n in lib)) throw new ReferenceError ('Unknown reference ' + op[1])
+
+    // HACK: detect cycles
+    // TODO clean this up alright
+    if (data != null && t === 'object' || t === 'function') {
+      if (marks[n] == null)
+        marks[n] = new WeakMap
+      const seen = marks[n].get (data)
+      if (seen == null || seen > depth) marks[n] .set (data, depth)
+      else if (depth > seen) data = Symbol ('Circular')
+    }
+
+    context = { data, key, lib, marks, depth:depth+1 }
     return unfold (lib[n], context)
   }
   
@@ -43,7 +53,7 @@ function unfold (expr, context = {})  {
     const scope = Object.create (lib)
     Object.assign (scope, op[1])
     // log ('withlib', op, scope, expr[1])
-    return unfold (expr[1], { data, key, lib:scope })
+    return unfold (expr[1], { data, key, lib:scope, marks, depth })
   }
 
   case T.context: { // 'withcontext'
@@ -54,13 +64,13 @@ function unfold (expr, context = {})  {
     const scope = Object.create (lib)
     scope [op[1]] = expr[1]
     // log ('letin', op, scope, expr[2])
-    return unfold (expr[2], { data, key, lib:scope })
+    return unfold (expr[2], { data, key, lib:scope, marks, depth })
   }
 
   case T.bind: {
     key = op[1] .substr(1)
     data = data == null ? undefined : data[key]
-    return unfold (expr[1], { data, key, lib })
+    return unfold (expr[1], { data, key, lib, marks, depth })
   }
 
   case T.ttest: {
@@ -80,15 +90,14 @@ function unfold (expr, context = {})  {
   }
 
   case T.iter: {
-    if (data == null)
-      return [null, VOID, VOID]
-
-    else if (typeof data !== 'object' || !(ITER in data)) {
+    if (data == null) return [null, VOID, VOID]
+    if (typeof data !== 'object') data = []
+    if (data[ITER] == null) {
       data = (op[1].length > 1)
-        ? iterate (data[op[1] .substr(1)])
+        ? iterate (data [op[1] .substr(1)])
         : iterate (data)
       data[ITER] = true
-      return unfold (expr, { data, key, lib })
+      return unfold (expr, { data, key, lib, marks, depth })
     }
 
     else {
@@ -96,7 +105,7 @@ function unfold (expr, context = {})  {
       const item = data.next ()
       if (item.done) return [null, VOID, VOID]
       const [key, value] = item.value
-      const [elem, subs, sibs] = unfold (expr[1], { data:value, key, lib })
+      const [elem, subs, sibs] = unfold (expr[1], { data:value, key, lib, marks, depth })
       const sibs2 = append (sibs, [[T.context, context], expr])
       return [elem, subs, append (sibs, sibs2)]
     }
@@ -106,7 +115,7 @@ function unfold (expr, context = {})  {
     // TODO what about (a + b) > c ?
     const [elem, subs, sibs] = unfold (expr[1], context)
     if (!elem) return [null, VOID, VOID]
-    const subs2 = [[T.context, { data, key, lib }], expr[2]]
+    const subs2 = [[T.context, { data, key, lib, marks, depth }], expr[2]]
     // log ('descend', { expr, subs, subs2 })
     return [elem, append (subs, subs2), sibs]
   }

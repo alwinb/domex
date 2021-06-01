@@ -17,6 +17,7 @@ const lib = {
   | span::null      .null      > "null"
   | span::function  .function  > "function " + %name
   | span::undefined .undefined > "undefined"
+  | span::symbol    .symbol    > %
   | ul  ::array     .array     > li* > @default
   | dl  ::object    .object    > di* > dt $ + (dd > @default)
   | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)),

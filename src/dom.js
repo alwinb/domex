@@ -1,11 +1,13 @@
 const { inspect } = require ('util')
 const { createUnfold } = require ('./eval.js')
+const { nodeTypes:T, typeNames:N } = require ('./signature')
 const log = console.log.bind (console)
 const hide = value => ({ writable:1, configurable:1, value })
 const unhide = value => ({ writable:1, configurable:1, enumerable:1, value })
 const define = (obj, arg2, arg3) => typeof arg2 === 'string'
   ? Object.defineProperty (obj, arg2, arg3)
   : Object.defineProperties (obj, arg2)
+
 
 // Dom Compat (sub API)
 // --------------------
@@ -41,7 +43,8 @@ class Element {
   }
 }
 
-// Quick, hacking it, dual access to class attribute
+// Quick hack to keep "class" and classList in sync:
+
 class ClassList extends Array {
   constructor (owner) {
     super ()
@@ -91,7 +94,7 @@ function* _render (expr, context) {
   if (elem === null) return
   
   if (typeof elem === 'string')
-    yield elem.replace (/</g, '&lt;') // FIXME not in rawtext
+    yield elem.replace (/</g, '&lt;') // FIXME not in rawtext // FIXME escape control chars?
   
   else if (elem instanceof UnsafeRaw)
     yield elem.value

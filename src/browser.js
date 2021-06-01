@@ -1,5 +1,5 @@
 (() => {
-const { signatures, parse } = require ('./signature.js')
+const { signatures, parse, nodeTypes:T } = require ('./signature.js')
 const { fold, preEval, bindDefs } = require ('./compile.js')
 const { createUnfold } = require ('./eval.js')
 const createElement = document.createElement.bind (document)
@@ -10,16 +10,22 @@ const unfold = createUnfold ({ createElement, createTextNode })
 // Domex
 // =====
 
-const lib = { '@default': bindDefs (parse (`
+const lib = {
+  
+  '@default': bindDefs (parse (`
   ( span::number    .number    > %
   | span::string    .string    > %
   | span::boolean   .boolean   > %
   | span::null      .null      > "null"
   | span::function  .function  > "function " + %name
   | span::undefined .undefined > "undefined"
+  | span::symbol    .symbol    > %
   | ul  ::array     .array     > li* > @default
   | dl  ::object    .object    > di* > dt $ + (dd > @default)
-  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)) }
+  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)),
+
+  '@unsafe-raw-html': [[T.unsafeRaw, '@unsafe-raw-html']]
+}
 
 
 class DomEx {

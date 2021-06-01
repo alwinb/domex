@@ -29,7 +29,7 @@ const signature = {
 
     sig: [
       { elem:      atom    `    [a-zA-Z] [a-zA-Z0-9_\-]*`
-      , component: atom    `[@] [a-zA-Z] [a-zA-Z0-9_\-]*`
+      , deref:     atom    `[@] [a-zA-Z] [a-zA-Z0-9_\-]*`
       , value:     atom    `[%] [a-zA-Z0-9_\-]*`
       , key:       atom    `[$]`
       , group:    [LEAF,   `[(]`,  'Dom',   `[)]`]    // wrapfix-atom

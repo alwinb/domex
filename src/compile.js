@@ -18,7 +18,7 @@ function bindDefs ({ expr, ops, name }) {
     expr = ops
   }
   if (name != null)
-    expr = [[T.letin, name], expr, [[T.component, name]]]
+    expr = [[T.letin, name], expr, [[T.deref, name]]]
   return expr
 }
 
@@ -44,7 +44,7 @@ function preEval (...expr) {
 
     case T.elem:
     case T.key:
-    case T.component:
+    case T.deref:
       return { expr, ops:null, name:null }
 
     case T.value: { // Split e.g. %foo into %~foo
