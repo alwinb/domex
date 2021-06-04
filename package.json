@@ -1,6 +1,6 @@
 {
   "name": "domex",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "An expression language for constructing DOM trees from data",
   "main": "src/index.js",
   "scripts": {

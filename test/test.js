@@ -40,7 +40,11 @@ var sample = domex `
 | span %
 ) @json
 `
+
+var sample = domex `@default`
 var sampleData = [1,2,34, {a:2, b:[1,2]}]
+sample.renderTo (sampleData, process.stdout)
+// process.exit (205)
 
 var sample = domex `pre % + " as HTML: " + @unsafe-raw-html`
 var sampleData = '<b>test</b>'
