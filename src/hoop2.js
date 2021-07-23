@@ -132,60 +132,54 @@ function compileRule (ruleName, rule, grammar) {
 // -------
 
 const PRE = Symbol ('PRE '), POST = Symbol ('POST')
-const _ER = /([^\n]{0,80})/ys
 
-function Parser (lexers, S0, E0, apply = (...args) => args) { 
-  let position  = 0     // current input position
-  let line      = 1     // current input line
-  let lastnl    = 0     // position of last newline
-  let state     = PRE   // current lexer-state
-  let token     = S0    // possible current input token + info (or node)
-  let group     = null  // possible higher order token returned from last call
-  const context = []    // stack of shunting yards
-  let opener, ops, builds // ref-cache into the current shunting yard
-  let lexer = lexers[S0[2]] // likewise // this is a bit hacky, REVIEW
+function Parser (lexers, startToken, endToken, apply = (...args) => args) {
+
+  let context // context/ costack
+  let group, input // current input
+  let position, line, lastnl // current input position
+  let lexer, state // current lexer-state
 
   this.parse = parse
   return this
 
-  /* where */
-
-  function precedes (tok1, tok2) { // [type, value, precedence]
-    // log (tok1, tok2)
-    const p1 = tok1[2], p2 = tok2[2]
-    return p1 > p2 ? true
-      : p1 === p2 && p1[0] & roleMask === POSTFIX ? true : false
+  // ### Init
+  
+  function init (_input) {
+    const root = new ShuntingYard (startToken, lexers [startToken[3]])
+    ; (context = [ root ])
+    ; (position = 0, line = 1, lastnl = 0)
+    ; (input = _input, group = null)
+    ; (lexer = root.lexer, state = PRE)
+    return root
   }
 
-  function parse (input) { do {
+  // ### Lexer
 
-    // ### Token Producer
+  function nextToken () {
+    const regex = state === PRE ? lexer.Before : lexer.After
+    const token = regex.next (input, position)
 
-    if (group == null && token == null) {
-      const regex = state === PRE ? lexer.Before : lexer.After
-      token = regex.next (input, position)
-      if (!token) {
-        const err = position < input.length && regex.lastIndex < position
-        const eof = !err
-        if (err || eof && state === PRE) {
-          const p = Math.max (lastnl, position-80)
-          _ER.lastIndex = lastnl
-          const snip = _ER.exec (input)[1]
-          throw new SyntaxError (`Invalid expression. ` +
-            `At line ${line}:${position - lastnl}:\n\n` +
-            `\t\t${snip}\n` +
-            `\t\t${'^'.padStart(position - lastnl + 1)}`)
-        }
-        token = E0
-      }
-      else if (token[1] === '\n')
-        (line++, lastnl = position + 1)
-      position = regex.lastIndex
+    if (token == null) {
+      // we are at the input end if err is false
+      const err = position < input.length && regex.lastIndex < position
+      if (err || state === PRE)
+        throw new ParserError (input, position, line, lastnl)
+      return endToken
     }
   
-    // ### Parser
+    else if (token[1] === '\n')
+      (line++, lastnl = position + 1);
+    
+    position = regex.lastIndex
+    return token
+  }
 
-    // token :: [type+role, value, info]
+  // ### Parser
+
+  function parse (_input) {
+    for (let group, { ops, builds } = init (_input); ;) {
+    const token = group || nextToken ()
     const role = group ? group[0][0] : token[0] 
 
     /*
@@ -215,20 +209,13 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
         : apply (item, ...builds.splice (i, arity))
     }
 
-    // END - Collapses the shunting yard into a 'token'
+    // END - Collapses the shunting yard into a 'compound token'
+    // and 'pushes it in front ot the input'.
 
     if (role & END) {
-      context.pop ()
-      const [type, data1, precedence] = opener
-      // Unset the START bit, add the GROUP bit
-      const type_ = type & ~START | GROUP
-      const hoop  = [type_, data1 + token[1]]
-      const arity = type_ & PREFIX ? 1 : type_ & INFIX|ASSOC ? 2 : 0 // arity
-      token = [hoop, builds[0]];
-      group = token
+      group = context.pop () .collapse (token)
       if (!context.length) return apply (...group)
-      if (arity) hoop.push (precedence, arity)
-      ;({ opener, ops, builds, lexer } = context [context.length-1])
+      else ({ ops, builds, lexer } = context [context.length-1])
       continue
     }
 
@@ -237,13 +224,9 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     // tokenInfo from returning something invalid?
 
     if (role & START) { 
-      opener = token
-      const name = opener[3] // [type, value, precedence, lexerName]
-      // log ('START', token)
-      ops    = []
-      builds = []
-      lexer  = lexers [name]
-      context.push ({ opener, ops, builds, lexer })
+      // token :: [type, value, precedence, lexerName]
+      const sy = new ShuntingYard (token, lexers [token[3]]);
+      ({ ops, builds, lexer } = context [context.length] = sy)
       state = PRE
     }
 
@@ -253,7 +236,7 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
     }
 
     else if (ops.length && (role & ASSOC) && token[0] === ops[ops.length-1][0]) {
-      // FIXME op might be a hoop; how does that work; ASSOC hoops?
+      // TODO how should ASSOC hoops work?
       ops[ops.length-1][3]++ // increment the arity
       state = PRE
     }
@@ -278,9 +261,55 @@ function Parser (lexers, S0, E0, apply = (...args) => args) {
       state = POST
     }
 
-    group = token = null
+    group = null
+  }}
 
-  } while (1) }
+}
+
+// ### Parser Error
+
+const _ER = /([^\n]{0,80})/ys
+
+function ParserError (input, position, line, lastnl) {
+  const p = Math.max (lastnl, position-80)
+  _ER.lastIndex = lastnl
+  const snip = _ER.exec (input)[1]
+  return new SyntaxError (`Invalid expression. ` +
+    `At line ${line}:${position - lastnl}:\n\n` +
+    `\t\t${snip}\n` +
+    `\t\t${'^'.padStart(position - lastnl + 1)}`)
+}
+
+// ### Operator Precedence
+
+function precedes (tok1, tok2) { // [type, value, precedence]
+  // log (tok1, tok2)
+  const p1 = tok1[2], p2 = tok2[2]
+  return p1 > p2 ? true
+    : p1 === p2 && p1[0] & roleMask === POSTFIX ? true : false
+}
+
+
+// Shunting Yard
+// -------------
+
+class ShuntingYard {
+
+  constructor (token, lexer) {
+    this.opener = token
+    this.lexer = lexer
+    this.ops = []
+    this.builds = []
+  }
+  
+   collapse (token) {
+    const [type, data1, precedence] = this.opener
+    const arity = type & PREFIX ? 1 : type & INFIX|ASSOC ? 2 : 0
+    // Construct a token with a HOOP; Unset the START bit and add the GROUP bit.
+    const hoop = [type &~ START | GROUP, data1 + token[1]]
+    if (arity) hoop.push (precedence, arity) // NB REVIEW
+    return [hoop, this.builds[0]]
+  }
 
 }
 
