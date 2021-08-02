@@ -1,7 +1,7 @@
 (() => {
 const { signatures, parse, nodeTypes:T } = require ('./signature.js')
 const { fold, preEval, bindDefs } = require ('./compile.js')
-const { createUnfold } = require ('./eval.js')
+const { createUnfold, refKey } = require ('./eval.js')
 const createElement = document.createElement.bind (document)
 const createTextNode = document.createTextNode.bind (document)
 const unfold = createUnfold ({ createElement, createTextNode })
@@ -27,6 +27,7 @@ const lib = {
   '@unsafe-raw-html': [[T.unsafeRaw, '@unsafe-raw-html']]
 }
 
+// const refKey = Symbol ('Domex.ref')
 
 class DomEx {
 
@@ -58,6 +59,7 @@ function render1 (expr, context) {
   return { elem, deriv:sibs }
 }
 
+DomEx.refKey = refKey
 
 // Template literal
 

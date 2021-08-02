@@ -1,5 +1,6 @@
 const log = console.log.bind (console)
 const { nodeTypes:T, typeNames:N, parse } = require ('./signature')
+const refKey = Symbol ('Domex.ref')
 
 // unfold: takes an expression and its input data
 // and returns a one-element unfolding [elem, subs-expr, siblings-expr]
@@ -46,7 +47,10 @@ function unfold (expr, context = {})  {
     }
 
     context = { data, key, lib, marks, depth:depth+1 }
-    return unfold (lib[n], context)
+    const r = unfold (lib[n], context)
+    // Quick hack to tag the model onto the dereferences
+    if (r[0]) r[0][refKey] = { data, key }
+    return r
   }
   
   case T.withlib: {
@@ -220,4 +224,4 @@ function* iterate (data) {
 // Exports
 // =======
 
-module.exports = { createUnfold }
+module.exports = { createUnfold, refKey }
