@@ -71,7 +71,8 @@ function unfold (expr, context = {})  {
     return unfold (expr[2], { data, key, lib:scope, marks, depth })
   }
 
-  case T.bind: {
+  case T.bind:
+  case T.bindi: {
     key = op[1] .substr(1)
     data = data == null ? undefined : data[key]
     return unfold (expr[1], { data, key, lib, marks, depth })

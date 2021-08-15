@@ -43,8 +43,10 @@ const signature = {
       , def:       postfix `[@] [a-zA-Z_] [a-zA-Z0-9_]*`
       , ttest:     postfix ` :: [a-zA-Z_] [a-zA-Z0-9_]*`
       , test:      postfix `[:] [a-zA-Z_] [a-zA-Z0-9_]*`
-      , bind:      postfix `[~] [a-zA-Z_] [a-zA-Z0-9_]*` // TODO what about numeric keys?
+      , bindi:     postfix `[~] (?: [0] | [1-9] [0-9]*)`
+      , bind:      postfix `[~] [a-zA-Z_] [a-zA-Z0-9_]*`
       , iter:      postfix `[*] (?:[a-zA-Z_] [a-zA-Z0-9_]*)?`
+      , addvaluei: postfix `[%] (?: [0] | [1-9] [0-9]*)`
       , addvalue:  postfix `[%] (?:[a-zA-Z_] [a-zA-Z0-9_]*)?`
       , addkey:    postfix `[$]`
       , addtext: [POSTFIX, `["]`,  'Chars',  `["]`]   // wrapfix-postfix

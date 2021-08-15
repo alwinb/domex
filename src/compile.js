@@ -92,7 +92,7 @@ function preEval (...expr) {
     case T.iter:
       return { ops:[expr[0], x.ops], name:null, expr:x.expr }
 
-    case T.bind: // REVIEW should bind distribute over defs or not?
+    case T.bind: case T.bindi: // REVIEW should bind distribute over defs or not?
     case T.test: case T.ttest:
     case T.class: case T.hash:
       return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
@@ -117,7 +117,8 @@ function preEval (...expr) {
       return { ops: x.ops, name:x.name, expr }
     }
 
-    case T.addvalue: {
+    case T.addvalue:
+    case T.addvaluei: {
       let vexpr = [[T.value, data]]
       if (data.length > 1) vexpr = [[T.bind, '~'+data.substr(1)], vexpr]
       const expr = [[T.append, " "], x.expr, vexpr]
