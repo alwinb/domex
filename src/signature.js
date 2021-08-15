@@ -6,6 +6,13 @@ const { LEAF, POSTFIX } = hoop.Roles
 const raw = (...source) =>
   String.raw (...source) .replace (/\s+/g, '')
 
+const wrapfix = (...args) => {
+  if (args.length !== 2) 
+    throw new Error ('wrapfix operator definition must use one placeholder')
+  const [left, right] = args[0] .raw .map (_ => _.replace (/\s/g, ''))
+  return [LEAF, left, args[1], right]
+}  
+
 
 // Grammar for Domex
 // =================
@@ -28,12 +35,12 @@ const signature = {
     end: end `[)]`,
 
     sig: [
-      { elem:      atom    `    [a-zA-Z] [a-zA-Z0-9_\-]*`
+      { elem:      atom    `[a-zA-Z] [a-zA-Z0-9_\-]*`
       , deref:     atom    `[@] [a-zA-Z] [a-zA-Z0-9_\-]*`
       , value:     atom    `[%] [a-zA-Z0-9_\-]*`
       , key:       atom    `[$]`
-      , group:    [LEAF,   `[(]`,  'Dom',   `[)]`]    // wrapfix-atom
-      , text:     [LEAF,   `["]`,  'Chars', `["]`] }, // wrapfix-atom
+      , group:     wrapfix `[(]  ${'Dom'}   [)]`   
+      , text:      wrapfix `["]  ${'Chars'} ["]` },
       { declare:   assoc   `[;]` }, // TODO also allow it in postfix pos
       { orelse:    assoc   `[|]` },
       { descend:   infix   `[>]`
@@ -92,12 +99,12 @@ const compiled = hoop.compile (signature)
 // are used in compile and eval,
 
 const additional = {
-  void:      tokenType (),
+  void:      tokenType (), // The empty NodeList
   letin:     tokenType (),
   withlib:   tokenType (), // [[T.withlib, lib], expr]
   context:   tokenType (), // [[T.context, ctx], expr]
   append:    tokenType (),
-  unsafeRaw: tokenType (), // [[T.unsafeRaw]]
+  unsafeRaw: tokenType (), // [[T.unsafeRaw]] // 'equivalent' with the current input parsed as a NodeList from html
 }
 
 // Collecting the types for export
