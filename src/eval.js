@@ -48,10 +48,10 @@ function unfold (expr, context = {})  {
 
     context = { data, key, lib, marks, depth:depth+1 }
 
-    let expr = lib[n]
-    let data_ = data
+    const expr0 = lib[n]
+    let expr = expr0, data_ = data
 
-    if ('ast' in expr) {
+    if ('ast' in expr) { // instanceof Domex
       if (typeof expr.prepareData === 'function') {
         data_ = expr.prepareData (data, key)
         context.data = data_
@@ -59,16 +59,16 @@ function unfold (expr, context = {})  {
       expr = expr.ast
     }
 
-    const r = unfold (expr, context)
-    // Quick hack to tag the model onto the dereferences
-    // NB for the time being, on components, 
+    const deriv = unfold (expr, context)
+    // Quick hack to tag the model onto the elements
+    // NB for the time being, on components:
     // - value is the unprepared / input data
     // - key is the input's key
     // - data is the _prepared_ data!
-    if (r[0]) r[0][refKey] = { value:data, data:data_, key }
-    return r
+    if (deriv[0]) deriv[0] [refKey] = { value:data, data:data_, key, expr:expr0 }
+    return deriv
   }
-  
+
   case T.withlib: {
     const scope = Object.create (lib)
     Object.assign (scope, op[1])

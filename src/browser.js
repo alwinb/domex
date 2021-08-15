@@ -6,6 +6,8 @@ const createElement = document.createElement.bind (document)
 const createTextNode = document.createTextNode.bind (document)
 const unfold = createUnfold ({ createElement, createTextNode })
 
+const call = (fn, ...args) => 
+  typeof fn === 'function' && fn (...args)
 
 // Domex
 // =====
@@ -42,28 +44,44 @@ class DomEx {
     return Object.setPrototypeOf (r, DomEx.prototype)
   }
 
-  render (data) {
-    const context = { data, lib }
+  // Produces the full NodeList expressed with expr,
+  // including their descendent recursively unfolded.
+
+  // FIXME hooks are hacked in, may be buggy and only work with single-element domexes.
+  // TODO stratify calls -- prevent redrawing from within didRender / didMount.
+
+  render (data, key = null) {
+    const context = { data, key, lib }
     const frag = document.createDocumentFragment ()
-    let { elem, deriv } = render1 (this.ast, context)
+    let { elem, deriv, expr, value, data:d } = render1 (this.ast, context)
     while (elem) {
-      frag.append (elem);
-      ({ elem, deriv } = render1 (deriv, context))
+      if (expr) call (expr.didRender, elem, value, d)
+      frag.append (elem)
+      // if (expr) call (expr.didMount, value, d);
+      ;({ elem, deriv, expr, value, data:d } = render1 (deriv, context))
     }
-    return { elem:frag.childNodes[0], elems:frag }
+    const r = { elem:frag.childNodes[0], elems:frag }
+    return r
   }
 }
+
+// Produces the first item of the NodeList expressed by expr,
+// including its descendents, recursively unfolded. 
 
 function render1 (expr, context) {
   const [elem, subs, sibs] = unfold (expr, context)
   if (elem && elem instanceof Element && subs) {
     let { elem:sub, deriv } = render1 (subs, context)
     while (sub) {
-      elem.append (sub);
+      const h = sub && sub [refKey]
+      if (h && h.expr) call (h.expr.didRender, sub, h.value, h.data)
+      elem.append (sub)
+      if (h && h.expr) call (h.expr.didMount, sub, h.value, h.data);
       ({ elem:sub, deriv } = render1 (deriv, context))
     }
   }
-  return { elem, deriv:sibs }
+  const h = elem && elem [refKey]
+  return { elem, deriv:sibs, expr:h?.expr, value:h?.value, data:h?.data }
 }
 
 DomEx.refKey = refKey

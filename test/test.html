@@ -10,69 +10,303 @@
 <body>
 </head>
 <body>
-
-<h1>Dom Expression Language</h1>
-
-<script id=dx1 type="domex">
-
-  // lib
-
-  form @login
-    > (h1 > "Login")
-    + ( @input ~modified :modified
-      | @input ~pristine :pristine
-      | @input
-      )
-    + (button > "login");
-
-  label @input
-    > "name"
-    + input [name=name value=%name];
-  
-  // main
-
-  @login + @default
-
-</script>
-
 <script>
+
 const log = console.log.bind (console)
 const dobo = document.body
 const $ = document.getElementById.bind (document)
 const { domex, Domex } = modules.domex
 
-// Bugs bugs bugx
 
+// Utils
+// -----
+
+const call = (fn, ...args) => 
+  typeof fn === 'function' && fn (...args)
+
+const listen = (el, type, fn) =>
+  el.addEventListener (type, fn)
+
+const getDomex = elem => { do {
+  if (Domex.refKey in elem)
+    return elem [Domex.refKey]
+  else elem = elem.parentNode }
+  while (elem)
+}
+
+// OK sure, so you can just eeeh use Domex.render and 
+// rip out and replace the old element.
+// But careful... ehm, with 1. the library contexts
+// and 2. what about the didRender hooks?
+
+// Ah and 3. a domex may produce multiple elements
+// and 3b. one element may have multiple domexes!
+// So.. that needs to be handeled somehow nicely too.
+
+
+// And, what happens with components that are further modified ?
+// And / or what happens with tests?
+
+function show (el, data) {
+  log ('show', el, data)
+  const info = el [Domex.refKey]
+  if (info == null || info.expr == null) return
+  
+  // If el was produced by a domex / componnt with hooks.
+  if (info.expr instanceof Domex) {
+    let state = data
+    const prep = info.expr.prepareData
+    if (typeof prep === 'function') state = prep (data, info.key)
+    const { elem, elems } = info.expr.render (state, info.key)
+    elem [Domex.refKey] = { value:data, key:info.key, data:state, expr:info.expr }
+    call (info.expr.didRender, elem, data, state)
+    el.replaceWith (elem)
+    call (info.expr.didMount, elem, data, state)
+  }
+
+  else if (Array.isArray (info.expr)) {
+    // TODO -- just render and replace; no hooks involved
+  }
+}
+
+function showState (el, state) {
+  log ('showState', el, state)
+  const info = el [Domex.refKey]
+  if (info == null || info.expr == null) return
+
+  // If el was produced by a domex / componnt with hooks.
+  if (info.expr instanceof Domex) {
+    const { elem, elems } = info.expr.render (state, info.key)
+    elem [Domex.refKey] = { value:info.value, key:info.key, data:state, expr:info.expr }
+    call (info.expr.didRender, elem, info.value, state)
+    el.replaceWith (elem)
+    call (info.expr.didMount, elem, info.value, state)
+  }
+
+  // If el was produced by a domex reference / ast.
+  else if (Array.isArray (info.expr)) {
+    // log (el, 'is a view')
+    // REVIEW This should do nothing? Only components have 'state' ?
+  }
+
+}
+
+// Examples
+// --------
 
 const sample = domex `
-  ( h1 > "Hello, World" )
-  + p > "This is domex :)"
+  main
+    > h1 "Hello, World"
+    + p "This is domex :)"
 `
+
+// ### Form
+
+const Form = domex `
+  form @login
+    > h1 "Login"
+    + ( @input ~modified :modified
+      | @input ~pristine :pristine
+      | @input
+      )
+    + p "Modified " %count :modified
+    + button "Submit";
+
+  label.hstack.sep @input
+    > span "name"
+    + input [name=n value=%name];
+
+  div > @login + @default
+`
+
+Form.prepareData = (data, key) => {
+  log ('form.prepareData', data, key)
+  return { modified:null, pristine:data, count:0 }
+}
+
+Form.didMount = (el, value, state) => {
+  log ('form did mount!', value, state, el [Domex.refKey])
+
+  const i = el.querySelector ('input')
+  if (state._input) {
+    i.replaceWith (state._input)
+    state._input.focus ()
+  }
+  else state._input = i
+
+  listen (el, 'input', evt => {
+    const n = state.pristine ? state.pristine.name : state.modified ? state.modified.name : value.name
+    if (n === evt.target.value) return
+    log ('input', state)
+    state = { count:state.count +1, _input:state._input }
+    state.modified = Object.assign ({}, value)
+    state.modified.name = state._input.value
+    showState (el, state)
+    state._input.focus ()
+  })
+
+  listen (el, 'submit', evt => {
+    evt.preventDefault ()
+    // log ('submit', state)
+    if (state.modified) {
+      show (document.querySelector ('main'), { body:state.modified })
+      // show (document.getElementById ('Inspector'), state.modified)
+      // show (el, state.modified)
+    }
+  })
+}
+
+// Right so TODO the custom event mechanism / events transformed
+// and/ or created and bubbling up through the component hierarchy
+
+
+// Inspector Example
+// -----------------
+
+const Inspector = domex `
+  div @inspector
+    > h3 "Inspector"
+    + p "Test"
+    + @default;
+
+  @inspector #Inspector
+`
+
+Inspector.didRender = (el, value, state) => {
+  log ('Inspector didRender', el, value, state)
+}
+
+Inspector.didMount = (el, value, state) => {
+  log ('Inspector didMount', el, value, state)
+}
+
+
+// Request state example
+// ---------------------
+
+const Loader = domex `
+  ( div.Loader:inactive
+    > p "Not loaded"
+    + button "Load"
+
+  | div.Loader:loading
+    > p "Loading" %name
+    + button "Abort"
+
+  | div.Loader:aborted
+    > p "Request aborted"
+    + button "Try again"
+
+  | div.Loader:failed
+    > p.error "Request failed."
+    + button "Try again"
+
+  | div.Loader:complete
+    > p "Loaded " %name "."
+    + button "Reload"
+
+  | div.Loader
+    > p "Request is in an unknown state.") @state;
+  
+  div.Resource
+    > h3 "Resource"
+    + p.br0 %name
+    + @state
+`
+
+Loader.prepareData = value => {
+  return new LoadState (value)
+}
+
+Loader.didMount = (el, value, state) => {
+  const b = el.querySelector ('button')
+
+  state.onstatechange = () =>
+    showState (el, state)
+
+  if (b) listen (b, 'click', evt => {
+    if (state.loading) state.abort ()
+    else state.load ()
+  })
+}
+
+// ### A Mock RequestState Model
+
+class LoadState {
+
+  constructor (value) {
+    this.state = 'inactive'
+    this.name = value
+    this._tid
+    Object.defineProperties (this, {
+      inactive: { get: () => this.state === 'inactive' },
+      loading:  { get: () => this.state === 'loading'  },
+      aborted:  { get: () => this.state === 'aborted'  },
+      failed:   { get: () => this.state === 'failed'   },
+      complete: { get: () => this.state === 'complete' },
+    })
+  }
+
+  load () {
+    if (this.loading) return
+    this.state = 'loading'
+    call (this.onstatechange, this)
+    const completed = () => (this.state = 'complete', call (this.onstatechange, this))
+    const failed = () => (this.state = 'failed', call (this.onstatechange, this))
+    const coin = Math.round ((Math.random () -.3) * 2)
+    this._tid = setTimeout ([completed, failed] [coin], Math.random () * 1000)
+  }
+
+  abort () {
+    if (this.loading) {
+      this.state = 'aborted'
+      clearTimeout (this._tid)
+      call (this.onstatechange, this)
+    }
+  }
+}
+
+
+// Main
+// ----
+
+const Main = domex `main.hstack > (@form + @loader~resourceName + @inspector) ~body`
+  .withLib ({ '@form': Form, '@inspector': Inspector, '@loader':Loader })
+  
+Main.didRender = (el, data, state) => {
+  log ('Main.didRender', el, data, state)
+}
+Main.didMount = (el, value, state) => {
+  log ('Main didMount', el, value, state)
+}
+
+
+// Test it
+// =======
+
+//sample.render().elems, 
 
 const sampleData = {
   name: 'jack',
   foo: 1,
   bar: [ 1, 2, [4, 5], "foo", null, undefined, NaN ],
-  obj: { 
-    x: 1,
-    y: 'z',
-    sym: Symbol('hi')
-  },
-  fn: document.createElement
+  obj: { x: 1, y: 'z', sym: Symbol('hi') },
+  fn: document.createElement,
+  resourceName: '/foo/bar.html'
 }
 
-const dx1 = new Domex ($('dx1').firstChild.data)
-dx1.prepareData = function (data, key) {
-  return { modified:null, pristine:data }
+//
+
+function createComponent (domex, el = document.createElement ('div')) {
+  el [Domex.refKey] = { key:null, value:null, data:null, expr:domex }
+  return el
 }
 
-const dx2 = domex `@login` .withLib ({'@login': dx1 })
+let _appRoot = new createComponent (Main)
+dobo.append (_appRoot)
+show (_appRoot, { body:sampleData })
 
-dobo.append (sample.render().elems, dx2.render (sampleData) .elems)
-
-
-
-window.addEventListener ('click', evt => {
+/*window.addEventListener ('click', evt => {
   let elem = evt.target
   do {
     if (Domex.refKey in elem) return log (elem[Domex.refKey])
@@ -80,7 +314,7 @@ window.addEventListener ('click', evt => {
   }
   while (elem)
 })
-
+//*/
 
 </script>
 </body>

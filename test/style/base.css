@@ -1,22 +1,23 @@
 /* Vertical Rhythm
 /* =============== */
 
+/* 2021-08-15 */
+
 html.debug {
   /* show the 1rem baseline rhythm */
   background:repeating-linear-gradient(to bottom, #0000, #0000 calc(1rem - 1px), #e0e0e0 calc(1rem - 1px), #e0e0e0 1rem, #0000 1rem);
 }
 
 html.debug * {
-  outline:1px solid rgba(0,0,0,.6);
-  opacity:.9;
+  outline:1px solid rgba(0,0,0,.4);
+  opacity:.95;
 }
 
 /* Establish a vertial rhythm by using
   one rem unit as a global line-height unit */
 
 html {
-  font-size:24px;
-  font-size:var(--line-height-global, 24px);
+  font-size:21px;
   line-height:1;
   font-family:Sans-Serif;
   margin:0;
@@ -24,31 +25,31 @@ html {
 }
 
 body {
-  font-size:16px;
-  font-size:var(--font-size-body, 16px);
+  font-size:calc(2rem/3);
   line-height:1rem;
-  margin:0;
+  margin:1rem; /* NB! */
   padding:0;
 }
 
 * {
   box-sizing:border-box;
-  line-height:1rem;
+  line-height:inherit;
 }
 
-*:not(h1,h2,h3,h4,h5,h6) {
+*:not(h1,h2,h3,h4,h5,h6,html,body) {
   font-size:inherit;
 }
 
 /* Block elements followed by a blank line */
-hr,p,ol,ul,dl,table,form,blockquote,pre,figure,img,video,canvas,h1,h2 {
+hr,p,ol,ul,dl,table,form,blockquote,pre,figure,img,video,canvas,h1,h2,section {
   display:block;
   margin-top:0;
   margin-bottom:1rem;
+  border-spacing:0;
 }
 
 /* No extra line after :last-child */
-hr:last-child,p:last-child,ol:last-child,ul:last-child,dl:last-child,table:last-child,form:last-child,blockquote:last-child,pre:last-child,figure:last-child,img:last-child,video:last-child,canvas:last-child,h1:last-child,h2:last-child {
+hr:last-child,p:last-child,ol:last-child,ul:last-child,dl:last-child,table:last-child,form:last-child,blockquote:last-child,pre:last-child,figure:last-child,img:last-child,video:last-child,canvas:last-child,h1:last-child,h2:last-child,section:last-child {
   margin-bottom:0;
 }
 
@@ -60,32 +61,287 @@ header,main,aside,article,footer,nav,div,dd,dt,fieldset,legend,figcaption,h3,h4,
 }
 
 
-/* Implementation of tracks / horizontal metrics system
-  -track and -track-snug modifiers */
+/* Defaults
+/* ======== */
 
-.-track {
+h1 {
+  font-size:1.7rem;
+  line-height:2rem;
+}
+
+pre {
+  tab-size:2;
+  white-space:pre;
+  /* white-space:pre-wrap; */
+}
+
+a[href], button { text-decoration:none; cursor:pointer; margin:0;}
+a[href]:hover, button:hover { text-decoration:underline; }
+
+/* NB reset */
+input { margin:0; }
+
+/* defaults for, ol, ol, and esp. dl */
+ul, ol, dl {
+  margin-left:0;
+  margin-right:0;
+  padding-left:1rem;
+}
+
+dd { margin-left:1rem }
+dt { font-weight:bold }
+dt:not(:last-child)::after { content:': ' } /* NB */
+
+di { display:list-item }
+di > dt, di > dd {
+  display:inline;
+  margin-left:0;
+}
+
+*:is(ul,ol,dl) *:is(dl,ul)
+  { list-style-type:circle }
+
+*:is(ul,ol,dl) *:is(ul,ol,dl) *:is(dl,ul)
+  { list-style-type:square }
+
+td, th {
+  padding-left:.5rem;
+  padding-right:.5rem;
+}
+
+
+/* Library
+/* ============= */
+
+/* some display: classes,
+inline, block, inline-block,
+combine that with hlist, maybe */
+
+/* horizontal stacks */
+
+.debug .hstack {
+  outline:1px solid red;
+}
+.hstack {
   display:block;
-  padding-left:var(--track-left) !important;
-  padding-right:var(--track-right) !important;
+  padding-left:0;
+}
+.hstack > * {
+  vertical-align:top;
+  display:inline-block;
+  line-height:inherit;
+  padding:0 .75ch; /* NB */
 }
 
-/* -snug elements ignore the parent -track's horizontal padding
-    and set their padding in such a way that their content box
-    aligns with the content box of the track. */
+/* vertical stacks */
 
-.-track-snug {
+.debug .vstack {
+  outline:1px solid blue;
+}
+.vstack {
   display:block;
-  margin-left:calc(-1 * var(--track-left));
-  margin-right:calc(-1 * var(--track-right));
-  padding-left:var(--track-left);
-  padding-right:var(--track-right);
+  padding-left:0;
+}
+.hstack > .vstack {
+  display:inline-block;
+}
+.vstack > * {
+  display:block;
 }
 
-html.debug .-track {
-  /* show the paddings */
-  background-image:
-    linear-gradient(to right, #f006 var(--track-left, 0), #0000 var(--track-left, 0)),
-    linear-gradient(to left, #f006 var(--track-right, 0), #0000 var(--track-right, 0));
+/* display-table */
+
+.debug .tab {
+  outline:1px solid green;
+}
+.tab {
+  display:table;
+  border-spacing:0;
+}
+.hstack > *.tab {
+  display:inline-table;
+}
+.tab > * {
+  display:table-row;
+}
+.tab > * > * {
+  display:table-cell;
+  padding:0 .75ch; /* NB */
 }
 
-/** End of Rhyme / Vertical Rhytm Css Framework **/
+/* layers */
+
+.layers
+  { position:relative; }
+
+.layers > * {
+  position:absolute;
+  top:0; left:0;
+}
+
+
+/* Margins and Padding
+/* ------------------- */
+
+.m0   { margin: 0 }
+.m    { margin: 1rem }
+.m1   { margin: 1rem }
+.m2   { margin: 2rem }
+.m3   { margin: 3rem }
+.m4   { margin: 4rem }
+.mm1  { margin: calc(1rem/12) }
+.mm2  { margin: calc(2rem/12) }
+.mm3  { margin: calc(3rem/12) }
+.mm4  { margin: calc(4rem/12) }
+.mm5  { margin: calc(5rem/12) }
+.mm6  { margin: calc(6rem/12) }
+.mm7  { margin: calc(7rem/12) }
+.mm8  { margin: calc(8rem/12) }
+.mm9  { margin: calc(9rem/12) }
+.mm10 { margin: calc(10rem/12) }
+.mm11 { margin: calc(11rem/12) }
+.mm12 { margin: calc(12rem/12) }
+
+/* margin-bottom */
+.br0 { margin-bottom:0 }
+.br  { margin-bottom:1rem }
+.br1 { margin-bottom:1rem }
+.br2 { margin-bottom:2rem }
+.br3 { margin-bottom:3rem }
+.br4 { margin-bottom:4rem }
+
+.p0   { padding: 0rem }
+.p    { padding: 1rem }
+.p1   { padding: 1rem }
+.p2   { padding: 2rem }
+.p3   { padding: 3rem }
+.p4   { padding: 4rem }
+.pp1  { padding: calc(1rem/12) }
+.pp2  { padding: calc(2rem/12) }
+.pp3  { padding: calc(3rem/12) }
+.pp4  { padding: calc(4rem/12) }
+.pp5  { padding: calc(5rem/12) }
+.pp6  { padding: calc(6rem/12) }
+.pp7  { padding: calc(7rem/12) }
+.pp8  { padding: calc(8rem/12) }
+.pp9  { padding: calc(9rem/12) }
+.pp10 { padding: calc(10rem/12) }
+.pp11 { padding: calc(11rem/12) }
+.pp12 { padding: calc(12rem/12) }
+
+/* line-heights */
+
+.x2 { line-height:2rem; }
+.x3 { line-height:3rem; }
+.x4 { line-height:4rem; }
+
+
+/* space between - WIP */
+
+.hstack.sep > * { margin-right:1rem; }
+.hstack.sep > *:last-child { margin-right:none; }
+
+.vstack.sep > *:last-child { margin-bottom:1rem; }
+.vstack.sep > *:last-child { margin-bottom:none; }
+
+/* float */
+.fl { float:left }
+.fr { float:right }
+.clear { display:block; clear:both; }
+
+
+/* Interactivity
+/* ------------- */
+
+.clipped { overflow:hidden }
+.scroll  { overflow:auto }
+.scrollx { overflow:hidden; overflow-x:auto }
+.scrolly { overflow:hidden; overflow-y:auto }
+
+
+/* Notifications
+/* ------------- */
+
+.error { color:#9D0006; }
+/*.warn { color:orange; }*/
+/*
+
+Want to add 'colors', 
+.err .info .warn
+.danger
+and selection/ focus,
+dimmed, screened, 
+*/
+
+/* Allow setting inherited colors */
+
+:root {
+  --border-color: black;
+  --link-color: blue;
+}
+
+
+/* Type
+/* ---- */
+
+.sans { font-family: Sans-Serif; }
+.serif { font-family: Serif; }
+.mono { font-family: MonoSpace; }
+
+.l { text-align:left; }
+.c { text-align:center; }
+.r { text-align:right; }
+
+.nowrap { white-space:nowrap }
+
+a, .link { text-decoration:none; cursor:pointer; margin:0; color:var(--link-color) }
+.link:hover { text-decoration:underline }
+
+
+/* Lines and Borders
+/* ----------------- */
+
+.hlines > *,
+.tab.hlines > * > *
+  { border-bottom:1px solid var(--border-color, currentColor) }
+
+.hlines > *:last-child 
+  { border-bottom:none; }
+
+.vlines > *,
+.tab.vlines > * > *
+  { border-right:1px solid var(--border-color, currentColor) }
+
+.vlines > *:last-child 
+  { border-right:none; }
+
+/**/
+
+table.lines th, table.hlines th,
+table.lines td, table.hlines td
+  { border-right:1px solid var(--border-color, currentColor) }
+
+table.lines tr > th:last-child,
+table.lines tr > td:last-child
+  { border-right:none; }
+
+table.lines th, table.vlines th,
+table.lines td, table.vlines td
+  { border-bottom:1px solid var(--border-color, currentColor) }
+
+table.lines tr:last-child > td,
+table.lines tr:last-child > th
+  { border-bottom:none; }
+
+
+/* Border color */
+
+.hlines > *,
+.vlines > *,
+.tab.hlines > * > *,
+.tab.vlines > * > *,
+table.lines th, table.lines td,
+table.hlines th, table.hlines td,
+table.vlines th, table.vlines td 
+  { border-color: var(--border-color, currentColor) }
+
