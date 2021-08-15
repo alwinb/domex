@@ -15,30 +15,23 @@
 
 <script id=dx1 type="domex">
 
-  // stdlib
-
-  ( span::number    .number    > %
-  | span::string    .string    > %
-  | span::boolean   .boolean   > %
-  | span::symbol    .symbol    > %
-  | span::null      .null      > "null"
-  | span::function  .function  > "function " + %name
-  | span::undefined .undefined > "undefined"
-  | ul  ::array     .array     > li* > @default
-  | dl  ::object    .object    > di* > (dt > $) + (dd > @default)
-  | dl   .unknown              > di* > (dt > $) + (dd > @default)
-  ) @default;
-
   // lib
 
   form @login
     > (h1 > "Login")
-    + (label > "name" + input [name=name value=%name])
+    + ( @input ~modified :modified
+      | @input ~pristine :pristine
+      | @input
+      )
     + (button > "login");
 
+  label @input
+    > "name"
+    + input [name=name value=%name];
+  
   // main
 
-  @default + @login
+  @login + @default
 
 </script>
 
@@ -69,9 +62,25 @@ const sampleData = {
 }
 
 const dx1 = new Domex ($('dx1').firstChild.data)
-log (dx1)
+dx1.prepareData = function (data, key) {
+  return { modified:null, pristine:data }
+}
 
-dobo.append (sample.render().elems, dx1.render (sampleData) .elems)
+const dx2 = domex `@login` .withLib ({'@login': dx1 })
+
+dobo.append (sample.render().elems, dx2.render (sampleData) .elems)
+
+
+
+window.addEventListener ('click', evt => {
+  let elem = evt.target
+  do {
+    if (Domex.refKey in elem) return log (elem[Domex.refKey])
+    elem = elem.parentNode
+  }
+  while (elem)
+})
+
 
 </script>
 </body>

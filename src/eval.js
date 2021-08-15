@@ -47,9 +47,25 @@ function unfold (expr, context = {})  {
     }
 
     context = { data, key, lib, marks, depth:depth+1 }
-    const r = unfold (lib[n], context)
+
+    let expr = lib[n]
+    let data_ = data
+
+    if ('ast' in expr) {
+      if (typeof expr.prepareData === 'function') {
+        data_ = expr.prepareData (data, key)
+        context.data = data_
+      }
+      expr = expr.ast
+    }
+
+    const r = unfold (expr, context)
     // Quick hack to tag the model onto the dereferences
-    if (r[0]) r[0][refKey] = { data, key }
+    // NB for the time being, on components, 
+    // - value is the unprepared / input data
+    // - key is the input's key
+    // - data is the _prepared_ data!
+    if (r[0]) r[0][refKey] = { value:data, data:data_, key }
     return r
   }
   
