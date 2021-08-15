@@ -71,7 +71,7 @@ const domex = (...args) =>
 // =======
 
 module.exports = {
-  version:'0.7.1-develop',
+  version:'0.8.0-dev',
   DomEx, domex,
   Domex: DomEx
 }
