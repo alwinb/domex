@@ -11,15 +11,15 @@ var sample = domex `ul > li > a [href="#"] > "hello, world"`
   //.renderTo (null, process.stdout)
 
 var sample = domex `
-( span::number    .number    > %
-| span::string    .string    > %
-| span::boolean   .boolean   > %
-| span::null      .null      > "null"
-| span::function  .function  > "function " + %name
-| span::undefined .undefined > "undefined"
-| ul  ::array     .array     > li* > @default
-| dl  ::object    .object    > di* > dt $ + (dd > @default)
-| dl   .unknown              > di* > dt $ + (dd > @default)
+( span::number    > %
+| span::string    > %
+| span::boolean   > %
+| span::null      > "null"
+| span::function  > "function " + %name
+| span::undefined > "undefined"
+| ul  ::array     > li* > @default
+| dl  ::object    > di* > dt $ + (dd > @default)
+| dl   .unknown   > di* > dt $ + (dd > @default)
 ) @default;
 
 body

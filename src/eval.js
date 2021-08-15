@@ -82,15 +82,21 @@ function unfold (expr, context = {})  {
     let _type = data === null ? 'null' : Array.isArray (data) ? 'array' : typeof data
     if (_type === 'object' && data.type) _type = data.type
     // log ('test', test, _type)
-    if (test !== _type) return [null, VOID, VOID]
-    else return unfold (expr[1], context)
+    if (test !== _type) return [null, VOID, VOID];
+    // Adds test to classList
+    [elem, subs, sibs] = unfold (expr[1], context)
+    if (elem && elem.classList) elem.classList.add (test)
+    return [elem, subs, sibs]
   }
 
   case T.test: {
     let test = op[1] .substr (1)
     let _value = data == null ? false : data[test]
-    if (!_value) return [null, VOID, VOID]
-    else return unfold (expr[1], context) // TODO add to classList, I think?
+    if (!_value) return [null, VOID, VOID];
+    // Adds test to classList
+    [elem, subs, sibs] = unfold (expr[1], context)
+    if (elem && elem.classList) elem.classList.add (test)
+    return [elem, subs, sibs]
   }
 
   case T.iter: {

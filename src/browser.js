@@ -13,18 +13,19 @@ const unfold = createUnfold ({ createElement, createTextNode })
 const lib = {
   
   '@default': bindDefs (parse (`
-  ( span::number    .number    > %
-  | span::string    .string    > %
-  | span::boolean   .boolean   > %
-  | span::null      .null      > "null"
-  | span::function  .function  > "function " + %name
-  | span::undefined .undefined > "undefined"
-  | span::symbol    .symbol    > %
-  | ul  ::array     .array     > li* > @default
-  | dl  ::object    .object    > di* > dt $ + (dd > @default)
-  | dl   .unknown              > di* > dt $ + (dd > @default) )`, preEval)),
+    ( span::number    > %
+    | span::string    > %
+    | span::boolean   > %
+    | span::null      > "null"
+    | span::function  > "function " + %name
+    | span::undefined > "undefined"
+    | span::symbol    > %
+    | ul  ::array     > li* > @default
+    | dl  ::object    > di* > dt $ + (dd > @default)
+    | dl   .unknown   > di* > dt $ + (dd > @default) )`, preEval)),
 
-  '@unsafe-raw-html': [[T.unsafeRaw, '@unsafe-raw-html']]
+  '@unsafe-raw-html':
+    [[T.unsafeRaw, '@unsafe-raw-html']],
 }
 
 // const refKey = Symbol ('Domex.ref')
