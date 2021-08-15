@@ -31,6 +31,7 @@ class DomEx {
 
   constructor (string) {
     this.ast = bindDefs (parse (string, preEval))
+    this.exports = this.ast[0][0] === T.withlib ? this.ast[0][1] : Object.create (null)
   }
 
   static fromFile (path, cb) {
@@ -44,6 +45,11 @@ class DomEx {
     })
   } 
   
+  withLib (lib) {
+    const r = { ast:[[T.withlib, lib], this.ast], exports:this.exports }
+    return Object.setPrototypeOf (r, DomEx.prototype)
+  }
+
   renderTo (data, stream, _end) {
     for (const chunk of _render (this.ast, { data, lib }))
       stream.write (chunk)
