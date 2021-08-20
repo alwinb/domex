@@ -16,15 +16,16 @@ const lib = {
   
   '@default': bindDefs (parse (`
     ( span::number    > %
+    | span::bigint    > %
     | span::string    > %
     | span::boolean   > %
     | span::null      > "null"
     | span::function  > "function " + %name
     | span::undefined > "undefined"
     | span::symbol    > %
-    | ul  ::array     > li* > @default
-    | dl  ::object    > di* > dt $ + (dd > @default)
-    | dl   .unknown   > di* > dt $ + (dd > @default) )`, preEval)),
+    | ul::array       > li* > @default
+    | dl::object      > di* > dt $ + (dd > @default)
+    | dl.unknown      > di* > dt $ + (dd > @default) )`, preEval)),
 
   '@unsafe-raw-html':
     [[T.unsafeRaw, '@unsafe-raw-html']],

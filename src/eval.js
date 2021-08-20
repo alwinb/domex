@@ -96,7 +96,8 @@ function unfold (expr, context = {})  {
 
   case T.ttest: {
     let test = op[1] .substr (2)
-    let _type = data === null ? 'null' : Array.isArray (data) ? 'array' : typeof data
+    let _type = data === null ? 'null'
+      : Array.isArray (data) ? 'array' : typeof data
     if (_type === 'object' && data.type) _type = data.type
     // log ('test', test, _type)
     if (test !== _type) return [null, VOID, VOID];

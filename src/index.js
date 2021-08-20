@@ -19,8 +19,8 @@ const lib = {
     | span::function  > "function " + %name
     | span::undefined > "undefined"
     | span::symbol    > %
-    | ul  ::array     > li* > @default
-    | dl  ::object    > di* > dt $ + (dd > @default)
+    | ul::array       > li* > @default
+    | dl::object      > di* > dt $ + (dd > @default)
     | dl   .unknown   > di* > dt $ + (dd > @default) )`, preEval)),
 
   '@unsafe-raw-html':
