@@ -12,6 +12,7 @@ const lib = {
   
   '@default': bindDefs (parse (`
     ( span::number    > %
+    | span::bigint    > %
     | span::string    > %
     | span::boolean   > %
     | span::null      > "null"
