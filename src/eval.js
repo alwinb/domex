@@ -102,7 +102,7 @@ function unfold (expr, context = {})  {
     // log ('test', test, _type)
     if (test !== _type) return [null, VOID, VOID];
     // Adds test to classList
-    [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (expr[1], context)
     if (elem && elem.classList) elem.classList.add (test)
     return [elem, subs, sibs]
   }
