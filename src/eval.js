@@ -65,7 +65,12 @@ function unfold (expr, context = {})  {
     // - value is the unprepared / input data
     // - key is the input's key
     // - data is the _prepared_ data!
-    if (deriv[0]) deriv[0] [refKey] = { value:data, data:data_, key, expr:expr0 }
+    if (deriv[0]) {
+      const ref = { value:data, data:data_, key, expr:expr0 }
+      if ('ast' in expr) // Hacking it... set prototype // 'instance of Domex'
+        Object.setPrototypeOf (ref, expr0)
+      deriv[0] [refKey] = ref
+    }
     return deriv
   }
 
@@ -140,7 +145,7 @@ function unfold (expr, context = {})  {
   }
 
   case T.descend: {
-    // TODO what about (a + b) > c ?
+    // TODO what about (a + b) > c ? ==> convert to (a > c) + (b > c)
     const [elem, subs, sibs] = unfold (expr[1], context)
     if (!elem) return [null, VOID, VOID]
     const subs2 = [[T.context, { data, key, lib, marks, depth }], expr[2]]
