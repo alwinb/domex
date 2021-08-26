@@ -21,8 +21,8 @@ const { domex, Domex } = modules.domex
 // Utils
 // -----
 
-const call = (fn, ...args) => 
-  typeof fn === 'function' && fn (...args)
+const call = (target, fn, ...args) => 
+  typeof fn === 'function' && fn.call (target, ...args)
 
 const listen = (el, type, fn) =>
   el.addEventListener (type, fn)
@@ -48,43 +48,44 @@ const getDomex = elem => { do {
 // And / or what happens with tests?
 
 function show (el, data) {
-  log ('show', el, data)
-  const info = el [Domex.refKey]
-  if (info == null || info.expr == null) return
+  const com = el [Domex.refKey]
+  if (com == null) return
   
   // If el was produced by a domex / componnt with hooks.
-  if (info.expr instanceof Domex) {
+  if (com instanceof Domex) {
     let state = data
-    const prep = info.expr.prepareData
-    if (typeof prep === 'function') state = prep (data, info.key)
-    const { elem, elems } = info.expr.render (state, info.key)
-    elem [Domex.refKey] = { value:data, key:info.key, data:state, expr:info.expr }
-    call (info.expr.didRender, elem, data, state)
+    const prep = com.prepareData
+    call (com, prep, data, com.key)
+    const { elem, elems } = com.render (state, com.key)
+    elem [Domex.refKey] = com
+    com.elem = elem
+    call (com, com.didRender, data, state)
     el.replaceWith (elem)
-    call (info.expr.didMount, elem, data, state)
+    call (com, com.didMount, data, state)
   }
 
-  else if (Array.isArray (info.expr)) {
+  else if (Array.isArray (com.expr)) {
     // TODO -- just render and replace; no hooks involved
   }
 }
 
 function showState (el, state) {
-  log ('showState', el, state)
-  const info = el [Domex.refKey]
-  if (info == null || info.expr == null) return
+  const com = el [Domex.refKey]
+  if (com == null) return
 
   // If el was produced by a domex / componnt with hooks.
-  if (info.expr instanceof Domex) {
-    const { elem, elems } = info.expr.render (state, info.key)
-    elem [Domex.refKey] = { value:info.value, key:info.key, data:state, expr:info.expr }
-    call (info.expr.didRender, elem, info.value, state)
-    el.replaceWith (elem)
-    call (info.expr.didMount, elem, info.value, state)
+  if (com instanceof Domex) {
+    const result = com.render (state, com.key)
+    log ('showState rerender', result, com, result.elem [Domex.refKey])
+    result.elem [Domex.refKey] = com // { value:com.value, key:com.key, data:state }
+    com.elem = result.elem
+    call (com, com.didRender, com.value, state)
+    el.replaceWith (result.elem)
+    call (com, com.didMount, com.value, state)
   }
 
   // If el was produced by a domex reference / ast.
-  else if (Array.isArray (info.expr)) {
+  else if (Array.isArray (com.expr)) {
     // log (el, 'is a view')
     // REVIEW This should do nothing? Only components have 'state' ?
   }
@@ -124,28 +125,39 @@ Form.prepareData = (data, key) => {
   return { modified:null, pristine:data, count:0 }
 }
 
-Form.didMount = (el, value, state) => {
-  log ('form did mount!', value, state, el [Domex.refKey])
+// React does this:
+// static getDerivedStateFromProps(props, state)
+// shouldComponentUpdate(nextProps, nextState)
+// componentWillUnmount()
+// componentDidUpdate(prevProps)
+// componentDidUpdate(prevProps, prevState, snapshot)
 
-  const i = el.querySelector ('input')
-  if (state._input) {
-    i.replaceWith (state._input)
-    state._input.focus ()
+
+Form.didReplace = function () {
+  log ('did swap', this)
+}
+
+Form.didMount = function (value, state) {
+  log ('form did mount!', this)
+
+  const i = this.elem.querySelector ('input')
+  if (this._input) {
+    i.replaceWith (this._input)
+    this._input.focus ()
   }
-  else state._input = i
+  else this._input = i
 
-  listen (el, 'input', evt => {
+  listen (this.elem, 'input', evt => {
     const n = state.pristine ? state.pristine.name : state.modified ? state.modified.name : value.name
     if (n === evt.target.value) return
-    log ('input', state)
-    state = { count:state.count +1, _input:state._input }
+    state = { count:state.count +1 }
     state.modified = Object.assign ({}, value)
-    state.modified.name = state._input.value
-    showState (el, state)
-    state._input.focus ()
+    state.modified.name = this._input.value
+    showState (this.elem, state)
+    this._input.focus ()
   })
 
-  listen (el, 'submit', evt => {
+  listen (this.elem, 'submit', evt => {
     evt.preventDefault ()
     // log ('submit', state)
     if (state.modified) {
@@ -172,12 +184,12 @@ const Inspector = domex `
   @inspector #Inspector
 `
 
-Inspector.didRender = (el, value, state) => {
-  log ('Inspector didRender', el, value, state)
+Inspector.didRender = function (value, state) {
+  log ('Inspector didRender', this.elem, value, state)
 }
 
-Inspector.didMount = (el, value, state) => {
-  log ('Inspector didMount', el, value, state)
+Inspector.didMount = function (value, state) {
+  log ('Inspector didMount', this.elem, value, state)
 }
 
 
@@ -218,13 +230,17 @@ Loader.prepareData = value => {
   return new LoadState (value)
 }
 
-Loader.didMount = (el, value, state) => {
-  const b = el.querySelector ('button')
+Loader.didMount = function (value, state) {
+  log ( 'Loader didMount, domex is?', this)
+  const b = this.elem.querySelector ('button')
 
-  state.onstatechange = () =>
-    showState (el, state)
+  state.onstatechange = () => {
+    log ('onstatechange')
+    showState (this.elem, state)
+  }
 
   if (b) listen (b, 'click', evt => {
+    log ('click', state)
     if (state.loading) state.abort ()
     else state.load ()
   })
@@ -250,9 +266,9 @@ class LoadState {
   load () {
     if (this.loading) return
     this.state = 'loading'
-    call (this.onstatechange, this)
-    const completed = () => (this.state = 'complete', call (this.onstatechange, this))
-    const failed = () => (this.state = 'failed', call (this.onstatechange, this))
+    call (this, this.onstatechange, this)
+    const completed = () => (this.state = 'complete', call (this, this.onstatechange, this))
+    const failed = () => (this.state = 'failed', call (this, this.onstatechange, this))
     const coin = Math.round ((Math.random () -.3) * 2)
     this._tid = setTimeout ([completed, failed] [coin], Math.random () * 1000)
   }
@@ -261,7 +277,7 @@ class LoadState {
     if (this.loading) {
       this.state = 'aborted'
       clearTimeout (this._tid)
-      call (this.onstatechange, this)
+      call (this, this.onstatechange, this)
     }
   }
 }
@@ -273,11 +289,12 @@ class LoadState {
 const Main = domex `main.hstack > (@form + @loader~resourceName + @inspector) ~body`
   .withLib ({ '@form': Form, '@inspector': Inspector, '@loader':Loader })
   
-Main.didRender = (el, data, state) => {
-  log ('Main.didRender', el, data, state)
+Main.didRender = function (data, state) {
+  log ('Main.didRender', this.elem, data, state)
 }
-Main.didMount = (el, value, state) => {
-  log ('Main didMount', el, value, state)
+
+Main.didMount = function (el, value, state) {
+  log ('Main didMount', this.elem, value, state)
 }
 
 
@@ -298,7 +315,9 @@ const sampleData = {
 //
 
 function createComponent (domex, el = document.createElement ('div')) {
-  el [Domex.refKey] = { key:null, value:null, data:null, expr:domex }
+  const ref = { key:null, value:null, data:null, ast:domex.ast }
+  Object.setPrototypeOf (ref, domex)
+  el [Domex.refKey] = ref
   return el
 }
 

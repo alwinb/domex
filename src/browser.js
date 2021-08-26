@@ -6,8 +6,8 @@ const createElement = document.createElement.bind (document)
 const createTextNode = document.createTextNode.bind (document)
 const unfold = createUnfold ({ createElement, createTextNode })
 
-const call = (fn, ...args) => 
-  typeof fn === 'function' && fn (...args)
+const call = (obj, fn, ...args) => 
+  typeof fn === 'function' && fn.call (obj, ...args)
 
 // Domex
 // =====
@@ -33,7 +33,7 @@ const lib = {
 
 // const refKey = Symbol ('Domex.ref')
 
-class DomEx {
+class Domex {
 
   constructor (string) {
     this.ast = bindDefs (parse (string, preEval))
@@ -42,7 +42,7 @@ class DomEx {
 
   withLib (lib) {
     const r = { ast:[[T.withlib, lib], this.ast], exports:this.exports }
-    return Object.setPrototypeOf (r, DomEx.prototype)
+    return Object.setPrototypeOf (r, Domex.prototype)
   }
 
   // Produces the full NodeList expressed with expr,
@@ -54,15 +54,15 @@ class DomEx {
   render (data, key = null) {
     const context = { data, key, lib }
     const frag = document.createDocumentFragment ()
-    let { elem, deriv, expr, value, data:d } = render1 (this.ast, context)
+    let { elem, deriv } = render1 (this.ast, context)
+    const ref = elem && elem [refKey]
     while (elem) {
-      if (expr) call (expr.didRender, elem, value, d)
+      if (ref instanceof Domex) call (ref, ref.didRender, value, d)
       frag.append (elem)
-      // if (expr) call (expr.didMount, value, d);
-      ;({ elem, deriv, expr, value, data:d } = render1 (deriv, context))
+      if (ref instanceof Domex) call (ref, ref.didMount, value, d);
+      ;({ elem, deriv } = render1 (deriv, context))
     }
-    const r = { elem:frag.childNodes[0], elems:frag }
-    return r
+    return { elem:frag.childNodes[0], elems:frag }
   }
 }
 
@@ -75,22 +75,21 @@ function render1 (expr, context) {
     let { elem:sub, deriv } = render1 (subs, context)
     while (sub) {
       const h = sub && sub [refKey]
-      if (h && h.expr) call (h.expr.didRender, sub, h.value, h.data)
+      if (h instanceof Domex) call (h, h.didRender, h.value, h.data)
       elem.append (sub)
-      if (h && h.expr) call (h.expr.didMount, sub, h.value, h.data);
+      if (h instanceof Domex) call (h, h.didMount, h.value, h.data);
       ({ elem:sub, deriv } = render1 (deriv, context))
     }
   }
-  const h = elem && elem [refKey]
-  return { elem, deriv:sibs, expr:h?.expr, value:h?.value, data:h?.data }
+  return { elem, deriv:sibs }
 }
 
-DomEx.refKey = refKey
+Domex.refKey = refKey
 
 // Template literal
 
 const domex = (...args) =>
-  new DomEx (String.raw (...args))
+  new Domex (String.raw (...args))
 
 
 // Exports
@@ -98,8 +97,8 @@ const domex = (...args) =>
 
 const exports = {
   version:'0.8.0-dev',
-  DomEx, domex,
-  Domex: DomEx
+  Domex, domex,
+  DomEx: Domex
 }
 
 let wmodule = window.modules = window.modules || {}

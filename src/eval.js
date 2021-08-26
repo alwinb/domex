@@ -38,6 +38,7 @@ function unfold (expr, context = {})  {
 
     // HACK: detect cycles
     // TODO clean this up alright
+    //*
     if (data != null && t === 'object' || t === 'function') {
       if (marks[n] == null)
         marks[n] = new WeakMap
@@ -46,32 +47,39 @@ function unfold (expr, context = {})  {
       else if (depth > seen) data = Symbol ('Circular')
     }
 
-    context = { data, key, lib, marks, depth:depth+1 }
+    context = { data, key, lib, marks, depth:depth+1 } //*/
 
-    const expr0 = lib[n]
-    let expr = expr0, data_ = data
+    const expr = lib[n]
+    let data_ = data
+
+    // Quick hack to tag the model onto the elements
+    // NB for the time being, on components:
+    // - value is the unprepared / input data
+    // - key is the input's key
+    // - data is the _prepared_ data!
 
     if ('ast' in expr) { // instanceof Domex
       if (typeof expr.prepareData === 'function') {
         data_ = expr.prepareData (data, key)
         context.data = data_
       }
-      expr = expr.ast
+      const deriv = unfold (expr.ast, context)
+      if (deriv[0]) {
+        const instance = { elem:deriv[0], value:data, data:data_, key }
+        Object.setPrototypeOf (instance, expr)
+        deriv[0] [refKey] = instance
+      }
+      return deriv
     }
 
-    const deriv = unfold (expr, context)
-    // Quick hack to tag the model onto the elements
-    // NB for the time being, on components:
-    // - value is the unprepared / input data
-    // - key is the input's key
-    // - data is the _prepared_ data!
-    if (deriv[0]) {
-      const ref = { value:data, data:data_, key, expr:expr0 }
-      if ('ast' in expr) // Hacking it... set prototype // 'instance of Domex'
-        Object.setPrototypeOf (ref, expr0)
-      deriv[0] [refKey] = ref
+    else {
+      const deriv = unfold (expr, context)
+      if (deriv[0]) {
+        const ref = { value:data, data:data_, key, expr }
+        deriv[0] [refKey] = ref
+      }
+      return deriv
     }
-    return deriv
   }
 
   case T.withlib: {
