@@ -57,9 +57,9 @@ class Domex {
     let { elem, deriv } = render1 (this.ast, context)
     const ref = elem && elem [refKey]
     while (elem) {
-      if (ref instanceof Domex) call (ref, ref.didRender, value, d)
+      if (ref instanceof Domex) call (ref, ref.didRender, ref.value, ref.data)
       frag.append (elem)
-      if (ref instanceof Domex) call (ref, ref.didMount, value, d);
+      if (ref instanceof Domex) call (ref, ref.didMount, ref.value, ref.data)
       ;({ elem, deriv } = render1 (deriv, context))
     }
     return { elem:frag.childNodes[0], elems:frag }
@@ -96,7 +96,7 @@ const domex = (...args) =>
 // =======
 
 const exports = {
-  version:'0.8.0-dev',
+  version:'0.8.1-dev',
   Domex, domex,
   DomEx: Domex
 }

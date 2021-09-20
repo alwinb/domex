@@ -33,13 +33,14 @@ function unfold (expr, context = {})  {
     return [createTextNode (data == null ? '' : String (data)), VOID, VOID]
 
   case T.deref: {
-    const n = op[1], t = typeof data
-    if (!(n in lib)) throw new ReferenceError ('Unknown reference ' + op[1])
+    const n = op[1] .substr(1)
+    const type = typeof data
+    if (!(n in lib)) throw new ReferenceError ('Unknown reference @' + n)
 
     // HACK: detect cycles
     // TODO clean this up alright
     //*
-    if (data != null && t === 'object' || t === 'function') {
+    if (data != null && type === 'object' || type === 'function') {
       if (marks[n] == null)
         marks[n] = new WeakMap
       const seen = marks[n].get (data)

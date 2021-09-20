@@ -10,7 +10,7 @@ const { _render } = require ('./dom.js')
 
 const lib = {
   
-  '@default': bindDefs (parse (`
+  default: bindDefs (parse (`
     ( span::number    > %
     | span::bigint    > %
     | span::string    > %
@@ -23,7 +23,7 @@ const lib = {
     | dl::object      > di* > dt $ + (dd > @default)
     | dl   .unknown   > di* > dt $ + (dd > @default) )`, preEval)),
 
-  '@unsafe-raw-html':
+  'unsafe-raw-html':
     [[T.unsafeRaw, '@unsafe-raw-html']],
 }
 
@@ -72,7 +72,7 @@ const domex = (...args) =>
 // =======
 
 module.exports = {
-  version:'0.8.0-dev',
+  version:'0.8.1-dev',
   DomEx, domex,
   Domex: DomEx
 }

@@ -68,7 +68,7 @@ function preEval (...expr) {
       for (let i=1; i<l; i++) {
         const _expr = bindDefs (expr[i])
         if (_expr[0][0] === T.letin) {
-          const name = _expr[0][1]
+          const name = _expr[0][1] .substr (1)
           lib[name] = _expr [1] // store the body only
         }
         // TODO throw on name clashes
