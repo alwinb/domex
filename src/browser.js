@@ -45,6 +45,16 @@ class Domex {
     return Object.setPrototypeOf (r, Domex.prototype)
   }
 
+  emitEvent (type, detail) {
+    // log ('emitEvent', this, type, detail)
+    let elem = this.elem?.parentNode
+    // log (elem)
+    if (elem) {
+      const evt_ = new CustomEvent (type, { detail, bubbles:true })
+      return elem.dispatchEvent (evt_)
+    }
+  }
+
   // Produces the full NodeList expressed with expr,
   // including their descendent recursively unfolded.
 
@@ -57,10 +67,13 @@ class Domex {
     let { elem, deriv } = render1 (this.ast, context)
     const ref = elem && elem [refKey]
     while (elem) {
-      if (ref instanceof Domex) call (ref, ref.didRender, ref.value, ref.data)
-      frag.append (elem)
-      if (ref instanceof Domex) call (ref, ref.didMount, ref.value, ref.data)
-      ;({ elem, deriv } = render1 (deriv, context))
+      if (ref instanceof Domex) {
+        call (ref, ref.didRender, ref.value, ref.data)
+        frag.append (elem)
+        call (ref, ref.didMount, ref.value, ref.data)
+      }
+      else frag.append (elem);
+      ({ elem, deriv } = render1 (deriv, context))
     }
     return { elem:frag.childNodes[0], elems:frag }
   }
@@ -75,9 +88,12 @@ function render1 (expr, context) {
     let { elem:sub, deriv } = render1 (subs, context)
     while (sub) {
       const h = sub && sub [refKey]
-      if (h instanceof Domex) call (h, h.didRender, h.value, h.data)
-      elem.append (sub)
-      if (h instanceof Domex) call (h, h.didMount, h.value, h.data);
+      if (h instanceof Domex) {
+        call (h, h.didRender, h.value, h.data)
+        elem.append (sub)
+        call (h, h.didMount, h.value, h.data)
+      }
+      else elem.append (sub);
       ({ elem:sub, deriv } = render1 (deriv, context))
     }
   }
