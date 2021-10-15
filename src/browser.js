@@ -14,7 +14,7 @@ const call = (obj, fn, ...args) =>
 
 const lib = {
   
-  '@default': bindDefs (parse (`
+  default: bindDefs (parse (`
     ( span::number    > %
     | span::bigint    > %
     | span::string    > %
@@ -27,7 +27,7 @@ const lib = {
     | dl::object      > di* > dt $ + (dd > @default)
     | dl.unknown      > di* > dt $ + (dd > @default) )`, preEval)),
 
-  '@unsafe-raw-html':
+  'unsafe-raw-html':
     [[T.unsafeRaw, '@unsafe-raw-html']],
 }
 
