@@ -1,7 +1,7 @@
-(() => {
-const { signatures, parse, nodeTypes:T } = require ('./signature.js')
-const { fold, preEval, bindDefs } = require ('./compile.js')
-const { createUnfold, refKey } = require ('./eval.js')
+import { parse, nodeTypes as T } from './signature.js'
+import { preEval, bindDefs } from './compile.js'
+import { createUnfold, refKey } from './eval.js'
+
 const createElement = document.createElement.bind (document)
 const createTextNode = document.createTextNode.bind (document)
 const unfold = createUnfold ({ createElement, createTextNode })
@@ -111,12 +111,5 @@ const domex = (...args) =>
 // Exports
 // =======
 
-const exports = {
-  version:'0.8.1-dev',
-  Domex, domex,
-  DomEx: Domex
-}
-
-let wmodule = window.modules = window.modules || {}
-wmodule.domex = exports 
-})()
+const version = '0.8.1-dev'
+export { version, Domex, domex }

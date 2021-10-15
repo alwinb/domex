@@ -5,20 +5,20 @@
   <title>Dom Expressions</title>
   <link rel="stylesheet" href="style/base.css">
   <link rel="stylesheet" href="style/main.css">
-  <script src="../dist/domex.js"></script>
+  <!-- <script src="../dist/domex.js"></script> -->
 </head>
 <body>
 </head>
 <body>
 <h1>Dom Expression Language</h1>
-<script>
+<script type=module>
+import { DomEx, domex } from '../src/browser.js'
 const log = console.log.bind (console)
 const dobo = document.body
-const { DomEx, domex, dom } = modules.domex;
 
 // log(
-//   dom `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
-//   dom `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem .outerHTML,
+//   domex `ul > (li %)*` ([1,2,3]) .elem .outerHTML,
+//   domex `dl > (dt $ + dd %)*` ({ foo:1, bar:2 }) .elem .outerHTML,
 // )
 
 const domIndex = Symbol('domIndex')
@@ -46,7 +46,7 @@ const Json = domex `@default`
 // Precedence from low to high:
 // |, <, +, 
 
-const sample = { one:1, two:2, three: {foo:4, bar:5}, ux:null, ar:[1,{x:2, y:false, z:null},3, undefined, dom] }
+const sample = { one:1, two:2, three: {foo:4, bar:5}, ux:null, ar:[1,{x:2, y:false, z:null},3, undefined, domex] }
 
 const menu = Menu.render (sample)
 dobo.append (menu.elem)

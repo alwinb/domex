@@ -5,17 +5,17 @@
   <title>Dom Expressions</title>
   <link rel="stylesheet" href="style/base.css">
   <link rel="stylesheet" href="style/main.css">
-  <script src="../dist/domex.js"></script>
+  <!-- <script src="../dist/domex.js"></script> -->
 </head>
 <body>
 </head>
 <body>
-<script>
+<script type=module>
 
+import { domex, Domex } from '../src/browser.js'
 const log = console.log.bind (console)
 const dobo = document.body
 const $ = document.getElementById.bind (document)
-const { domex, Domex } = modules.domex
 
 
 // Utils
@@ -103,7 +103,7 @@ const sample = domex `
 
 // ### Form
 
-const Form = domex `
+const form = domex `
   form @login
     > h1 "Login"
     + ( @input ~modified :modified
@@ -120,7 +120,7 @@ const Form = domex `
   div > @login + @default
 `
 
-Form.prepareData = (data, key) => {
+form.prepareData = (data, key) => {
   log ('form.prepareData', data, key)
   return { modified:null, pristine:data, count:0 }
 }
@@ -133,11 +133,11 @@ Form.prepareData = (data, key) => {
 // componentDidUpdate(prevProps, prevState, snapshot)
 
 
-Form.didReplace = function () {
+form.didReplace = function () {
   log ('did swap', this)
 }
 
-Form.didMount = function (value, state) {
+form.didMount = function (value, state) {
   log ('form did mount!', this)
 
   const i = this.elem.querySelector ('input')
@@ -175,7 +175,7 @@ Form.didMount = function (value, state) {
 // Inspector Example
 // -----------------
 
-const Inspector = domex `
+const inspector = domex `
   div @inspector
     > h3 "Inspector"
     + p "Test"
@@ -184,11 +184,11 @@ const Inspector = domex `
   @inspector #Inspector
 `
 
-Inspector.didRender = function (value, state) {
+inspector.didRender = function (value, state) {
   log ('Inspector didRender', this.elem, value, state)
 }
 
-Inspector.didMount = function (value, state) {
+inspector.didMount = function (value, state) {
   log ('Inspector didMount', this.elem, value, state)
 }
 
@@ -196,7 +196,7 @@ Inspector.didMount = function (value, state) {
 // Request state example
 // ---------------------
 
-const Loader = domex `
+const loader = domex `
   ( div.Loader:inactive
     > p "Not loaded"
     + button "Load"
@@ -226,11 +226,11 @@ const Loader = domex `
     + @state
 `
 
-Loader.prepareData = value => {
+loader.prepareData = value => {
   return new LoadState (value)
 }
 
-Loader.didMount = function (value, state) {
+loader.didMount = function (value, state) {
   log ( 'Loader didMount, domex is?', this)
   const b = this.elem.querySelector ('button')
 
@@ -287,7 +287,7 @@ class LoadState {
 // ----
 
 const Main = domex `main.hstack > (@form + @loader~resourceName + @inspector) ~body`
-  .withLib ({ '@form': Form, '@inspector': Inspector, '@loader':Loader })
+  .withLib ({ form, inspector, loader })
   
 Main.didRender = function (data, state) {
   log ('Main.didRender', this.elem, data, state)

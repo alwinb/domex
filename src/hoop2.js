@@ -317,5 +317,7 @@ class ShuntingYard {
 // Exports
 // =======
 
-module.exports = { compile, Parser, Roles, token, tokenType, roleMask, typeMask,
-  start, atom, prefix, infix, assoc, postfix, end }
+export {
+  compile, Parser, Roles, token, tokenType, roleMask, typeMask,
+  start, atom, prefix, infix, assoc, postfix, end
+}

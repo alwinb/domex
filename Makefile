@@ -11,10 +11,10 @@ run: all
 all: dist/$(bundle-name).js dist/$(bundle-name).min.js
 
 dist/$(bundle-name).min.js: dist/ $(sources)
-	esbuild $(srcdir)$(bundle-entry) --minify --bundle --outfile=dist/$(bundle-name).min.js
+	esbuild $(srcdir)$(bundle-entry) --minify --bundle --format=esm --outfile=dist/$(bundle-name).min.js
 
 dist/$(bundle-name).js: dist/ $(sources)
-	esbuild $(srcdir)$(bundle-entry) --bundle --outfile=dist/$(bundle-name).js
+	esbuild $(srcdir)$(bundle-entry) --bundle --format=esm --outfile=dist/$(bundle-name).js
 
 dist/:
 	mkdir dist/

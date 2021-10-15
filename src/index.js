@@ -1,8 +1,8 @@
+import { readFile } from 'fs/promises'
+import { parse, nodeTypes as T } from './signature.js'
+import { preEval, bindDefs } from './compile.js'
+import { _render } from './dom.js'
 const log = console.log.bind (console)
-const { readFile } = require ('fs')
-const { signatures, parse, nodeTypes:T } = require ('./signature.js')
-const { fold, preEval, bindDefs } = require ('./compile.js')
-const { _render } = require ('./dom.js')
 
 
 // Domex
@@ -27,28 +27,22 @@ const lib = {
     [[T.unsafeRaw, '@unsafe-raw-html']],
 }
 
+// Class
 
-class DomEx {
+class Domex {
 
   constructor (string) {
     this.ast = bindDefs (parse (string, preEval))
     this.exports = this.ast[0][0] === T.withlib ? this.ast[0][1] : Object.create (null)
   }
 
-  static fromFile (path, cb) {
-    readFile (path, 'utf-8', (err, string) => {
-      if (err) cb (err)
-      try {
-        const dx = new DomEx (string)
-        cb (err, dx)
-      }
-      catch (e) { cb (e) }
-    })
-  } 
+  static async fromFile (path, cb) {
+    return new Domex (await readFile (path, 'utf-8'))
+  }
   
   withLib (lib) {
     const r = { ast:[[T.withlib, lib], this.ast], exports:this.exports }
-    return Object.setPrototypeOf (r, DomEx.prototype)
+    return Object.setPrototypeOf (r, Domex.prototype)
   }
 
   renderTo (data, stream, _end) {
@@ -65,14 +59,13 @@ class DomEx {
 // Template literal
 
 const domex = (...args) =>
-  new DomEx (String.raw (...args))
+  new Domex (String.raw (...args))
 
 
 // Exports
 // =======
 
-module.exports = {
-  version:'0.8.1-dev',
-  DomEx, domex,
-  Domex: DomEx
-}
+const  version = '0.8.1-dev'
+export { Domex, domex }
+
+// Domex.fromFile (process.env.TM_PROJECT_DIRECTORY + '/test/test.dx') .then (log)

@@ -1,6 +1,6 @@
+import { nodeTypes as T, typeNames as N } from './signature.js'
+import { typeMask } from './hoop2.js'
 const log = console.log.bind (console)
-const { signatures, nodeTypes:T, typeNames:N } = require ('./signature')
-const { typeMask } = require ('./hoop2')
 
 // `preEval` Algebra
 // =================
@@ -162,4 +162,7 @@ function preEval (...expr) {
   }
 }
 
-module.exports = { preEval, bindDefs }
+
+// Exports
+// -------
+export { preEval, bindDefs }

@@ -1,6 +1,6 @@
-const log = console.log.bind (console)
-const { nodeTypes:T, typeNames:N, parse } = require ('./signature')
+import { nodeTypes as T, typeNames as N, parse } from './signature.js'
 const refKey = Symbol ('Domex.ref')
+const log = console.log.bind (console)
 
 // unfold: takes an expression and its input data
 // and returns a one-element unfolding [elem, subs-expr, siblings-expr]
@@ -262,4 +262,4 @@ function* iterate (data) {
 // Exports
 // =======
 
-module.exports = { createUnfold, refKey }
+export { createUnfold, refKey }

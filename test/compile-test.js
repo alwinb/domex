@@ -1,7 +1,7 @@
+import { parse } from '../src/signature.js'
+import { preEval, bindDefs } from '../src/compile.js'
+import { fold } from '../src/fold.js'
 const log = console.log.bind (console)
-const { parse } = require ('../src/signature.js')
-const { preEval, bindDefs } = require ('../src/compile.js')
-const { fold } = require ('../src/fold.js')
 
 // Test
 // ====

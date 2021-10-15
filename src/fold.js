@@ -53,4 +53,4 @@ const fold = (expr, apply) =>
 // Exports
 // -------
 
-module.exports = { refold, fold }
+export { refold, fold }

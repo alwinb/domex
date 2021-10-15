@@ -1,6 +1,6 @@
+import { parse } from '../src/signature.js'
+import { bindDefs, preEval } from '../src/compile.js'
 const log = console.log.bind (console)
-const { parse } = require ('../src/signature.js')
-const { bindDefs, preEval } = require ('../src/compile.js')
 
 /*
 // log (JSON.stringify (parse ('a > b + c?test')))

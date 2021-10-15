@@ -1,7 +1,10 @@
+import {
+  Parser, token, tokenType,
+  Roles, start, atom, postfix, infix, assoc, end,
+  compile } from './hoop2.js'
+
+const { LEAF, POSTFIX } = Roles
 const log = console.log.bind (console)
-const hoop = require ('./hoop2.js')
-const { token, tokenType, start, atom, postfix, infix, assoc, end } = hoop
-const { LEAF, POSTFIX } = hoop.Roles
 
 const raw = (...source) =>
   String.raw (...source) .replace (/\s+/g, '')
@@ -90,7 +93,7 @@ const signature = {
   },
 }
 
-const compiled = hoop.compile (signature)
+const compiled = compile (signature)
 
 // Node types/ tags
 // ----------------
@@ -128,7 +131,7 @@ for (let k in nodeTypes)
 function parse (input, apply) {
   const S0 = compiled.lexers.Dom.Before.next ('(')
   const E0 = compiled.lexers.Dom.After.next (')')
-  const p = new hoop.Parser (compiled.lexers, S0, E0, apply)
+  const p = new Parser (compiled.lexers, S0, E0, apply)
   return p.parse (input)
 }
 
@@ -136,4 +139,4 @@ function parse (input, apply) {
 // Exports
 // -------
 
-module.exports = { nodeTypes, typeNames, parse }
+export { nodeTypes, typeNames, parse }

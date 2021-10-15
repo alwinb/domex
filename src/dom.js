@@ -1,6 +1,7 @@
-const { inspect } = require ('util')
-const { createUnfold } = require ('./eval.js')
-const { nodeTypes:T, typeNames:N } = require ('./signature')
+import { inspect } from 'util'
+import { createUnfold } from './eval.js'
+import { nodeTypes as T, typeNames as N } from './signature.js'
+
 const log = console.log.bind (console)
 const hide = value => ({ writable:1, configurable:1, value })
 const unhide = value => ({ writable:1, configurable:1, enumerable:1, value })
@@ -120,4 +121,4 @@ function renderAttributes (el) { const chunks = [ ]
 // Exports
 // -------
 
-module.exports = { Element, createElement, createTextNode, _render }
+export { Element, createElement, createTextNode, _render }
