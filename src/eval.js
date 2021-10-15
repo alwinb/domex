@@ -126,7 +126,7 @@ function unfold (expr, context = {})  {
     let _value = data == null ? false : data[test]
     if (!_value) return [null, VOID, VOID];
     // Adds test to classList
-    [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (expr[1], context)
     if (elem && elem.classList) elem.classList.add (test)
     return [elem, subs, sibs]
   }
