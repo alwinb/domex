@@ -12,7 +12,7 @@
 <body>
 <h1>Dom Expression Language</h1>
 <script type=module>
-import { DomEx, domex } from '../src/browser.js'
+import { Domex, domex } from '../src/browser.js'
 const log = console.log.bind (console)
 const dobo = document.body
 
@@ -23,7 +23,7 @@ const dobo = document.body
 
 const domIndex = Symbol('domIndex')
 function Dom (source, data) {
-  const build = new DomEx (source) .render (data)
+  const build = new Domex (source) .render (data)
   build.elem [domIndex] = build
   return build.elem
 }
@@ -62,8 +62,8 @@ json.elem.addEventListener ('click', evt => {
   // But it might be good to also access the refs from here. 
   const root = evt.currentTarget
   const elem = evt.target
-  const key = elem[DomEx.key]
-  const model = elem[DomEx.model]
+  const key = elem[Domex.key]
+  const model = elem[Domex.model]
   log ({ root, elem, model, key })
 })
 

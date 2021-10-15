@@ -17,7 +17,7 @@ The abstract syntax of Domex is given by the following grammar.
 
 _E_ ::=   
 
-_elem_     |     _text_     |     `@`_ref_     |     `$`     |     `%`
+_tag-name_     |     _text_     |     `@`_ref_     |     `$`     |     `%`
 
 _E_ `.`_class_     |     _E_ `#`_id_     |     _E_ `[`_Attrs_`]`
 
@@ -25,7 +25,7 @@ _E_ `>` _E_     |     _E_ `+` _E_     |     _E_ `|` _E_
 
 _E_ `*`     |     _E_ `~`_prop_
 
-_E_ `@`_name_     |     _E_ `;` _E_
+_E_ `@`_name_     |     _E1_ `;` … `;` _En_ `;` _E_
 
 _E_ `:`_test_       |     _E_ `::`_type-test_
 
@@ -33,11 +33,11 @@ _E_ `:`_test_       |     _E_ `::`_type-test_
 
 ### Attribute Expressions
 
-Attrs ::=     A  Attrs
+Attrs   ::=     A  Attrs
 
-A ::=     _attr-name_      |     _attr-name_ `=` _V_
+A   ::=     _attr-name_      |     _attr-name_ `=` _V_
 
-V ::=     _text_     |     `$`     |     `%`
+V   ::=     _text_     |     `$`     |     `%`
 
 </center>
 
@@ -65,7 +65,7 @@ DOM Expressions denote render **functions** that take structured data as input t
 
 ### Child and Sibling Combinators
 
-- _E1_ `>` _E2_ — adds _E2_ as children to the last element of _E1_.
+- _E1_ `>` _E2_ — adds _E2_ as children to all element in _E1_.
 - _E1_ `+` _E2_ — adds _E2_ as siblings to _E1_.
 - _E1_ `|` _E2_ — the 'or-else' operator – is equivalent to _E2_ if _E1_ evaluates to an empty list, otherwise it is equivalent to _E1_. 
 
@@ -83,15 +83,13 @@ Shorthands:
 - Likewise, _E_ `%`_name_ may be used for _E_ `%` `~`_name_.  
 - Likewise, _E_ `*`_name_ is a shorthand for _E_ `*` `~`_name_.
 
-The `*` operator is made to distribute over `>` as follows: (_E1_`*` `>` _E2_)  =  (_E1_ `>`_E2_)`*`.  
-For example, `dl > di* > dt $ + dd %` is equivalent with `dl > (di > dt $ + dd %)*`.
 
 
 ### Append operator
 
-- _E_ _text_ — appends _text_ the last element of _E_.
-- _E_ `$` — Appends the key of the current input to the last element of _E_ as a text node. 
-- _E_ `%` — Appends a string representation of the current input to the last element of _E_. 
+- _E_ _text_ — appends _text_ to all elements in _E_.
+- _E_ `$` — Appends the key of the current input as a textnode to all elements in _E_. 
+- _E_ `%` — Appends a string representation of the current input to all elements in _E_. 
 
 **Note**: The design of the append operator with dynamic content (i.e. the last two items) is still somewhat problematic and may require some changes. Naïvely _E_ `%` is a shorthand for (_E_ `>` `%`), however the `~` operator is made to distribute over `>`, e.g. `span ~name > %` is equivalent to `(span > %) ~name`. Thus the question is, what should the semantics of e.g. `div ~prop %` be?
 
@@ -99,7 +97,7 @@ For example, `dl > di* > dt $ + dd %` is equivalent with `dl > (di > dt $ + dd %
 ### Named expressions
 
 - _E_`@`_name_ — assigns the expression _E_ the name _name_. Used in declarations and in recursive expressions. 
-- _E1_ `;` … _En_ `;` _E_ – declaration list; use the named expressions in _E1_ … _En_ in the evaluation of _E_. 
+- _E1_ `;` … `;` _En_ `;` _E_ – declaration list; use the named expressions in _E1_ … _En_ in the evaluation of _E_. 
 
 
 ### Conditionals
@@ -108,3 +106,14 @@ For example, `dl > di* > dt $ + dd %` is equivalent with `dl > (di > dt $ + dd %
 - _E_`::`_test_ — runs a type-test named _test_ against the current input and results in _E_ if true, or in the empty sequence otherwise. 
 
 
+
+Some Axioms
+-----------
+
+- _E1_`*` `>` _E2_  =  (_E1_ `>`_E2_)`*`
+- _E1_`*` _text_  =  (_E1_ `>` _text_)`*`
+- _E1_`*` `$`  =  (_E1_ `>` `$`)`*`
+- _E1_`*` `%`  =  (_E1_ `>` `%`)`*`
+
+
+For example, `dl > di* > dt $ + dd %` is equivalent with `dl > (di > dt $ + dd %)*`.
