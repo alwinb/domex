@@ -1,56 +1,61 @@
 import { nodeTypes as T, typeNames as N, parse } from './signature.js'
-const refKey = Symbol ('Domex.ref')
+const { assign, setPrototypeOf:setProto } = Object
 const log = console.log.bind (console)
 
-// unfold: takes an expression and its input data
-// and returns a one-element unfolding [elem, subs-expr, siblings-expr]
+// Domex unfolder
+// ==============
 
+// unfold: takes an expression and input-data and returns a
+// 'one-element unfolding': a tuple [elem, subs-expr, siblings-expr]
+//  where elem is an actual DOM node (or sometimes internally, null), 
+//  subs-expr the Dom expression that describes its children, 
+//  and siblings-expr is a dom-expression that describes its (right-) siblings
+
+const refKey = Symbol ('Domex.ref')
+const ITER = Symbol ('unfold.generator')
 const VOID = [[T.void, 'ε']]
 
 const createUnfold = ({ createElement, createTextNode, _createRawHTMLNode }) =>
 function unfold (expr, context = {})  {
   let { data, key, lib = {}, marks = {}, depth = 0 } = context
-  const op = expr[0], tag = op[0]
+  const op = expr[0], opcode = op[0], opdata = op[1]
+  const a  = expr[1],  b  = expr[2] // may be `undefined`
   // log ('\nunfold', expr)
 
-  switch (tag) {
-  case T.void:
-    return [null, VOID, VOID]
+  switch (opcode) {
 
-  case T.elem:
-    return [createElement (op[1]), VOID, VOID]
-
-  case T.text:
-    return [createTextNode (op[1]), VOID, VOID]
+  case T.void: return [null,                    VOID, VOID]
+  case T.elem: return [createElement  (opdata), VOID, VOID]
+  case T.text: return [createTextNode (opdata), VOID, VOID]
   
   case T.unsafeRaw:
-   return [_createRawHTMLNode (data == null ? '' : String (data)), VOID, VOID]
+   return [_createRawHTMLNode (show (data)), VOID, VOID]
 
   case T.key:
-    return [createTextNode (key == null ? '' : String (key)), VOID, VOID]
+    return [createTextNode (show (key)), VOID, VOID]
 
   case T.value:
-    return [createTextNode (data == null ? '' : String (data)), VOID, VOID]
+    return [createTextNode (show (data)), VOID, VOID]
 
   case T.deref: {
-    const n = op[1] .substr(1)
+    const name = opdata .substr (1)
     const type = typeof data
-    if (!(n in lib)) throw new ReferenceError ('Unknown reference @' + n)
+    if (!(name in lib)) throw new ReferenceError ('Unknown reference @' + name)
 
     // HACK: detect cycles
     // TODO clean this up alright
     //*
     if (data != null && type === 'object' || type === 'function') {
-      if (marks[n] == null)
-        marks[n] = new WeakMap
-      const seen = marks[n].get (data)
-      if (seen == null || seen > depth) marks[n] .set (data, depth)
+      if (marks[name] == null)
+        marks[name] = new WeakMap
+      const seen = marks[name].get (data)
+      if (seen == null || seen > depth) marks[name] .set (data, depth)
       else if (depth > seen) data = Symbol ('Circular')
     }
 
     context = { data, key, lib, marks, depth:depth+1 } //*/
 
-    const expr = lib[n]
+    const expr = lib[name]
     let data_ = data
 
     // Quick hack to tag the model onto the elements
@@ -67,7 +72,7 @@ function unfold (expr, context = {})  {
       const deriv = unfold (expr.ast, context)
       if (deriv[0]) {
         const instance = { elem:deriv[0], value:data, data:data_, key }
-        Object.setPrototypeOf (instance, expr)
+        setProto (instance, expr)
         deriv[0] [refKey] = instance
       }
       return deriv
@@ -84,49 +89,48 @@ function unfold (expr, context = {})  {
   }
 
   case T.withlib: {
-    const scope = Object.create (lib)
-    Object.assign (scope, op[1])
-    // log ('withlib', op, scope, expr[1])
-    return unfold (expr[1], { data, key, lib:scope, marks, depth })
+    const scope = assign (Object.create (lib), opdata)
+    // log ('withlib', op, scope, a)
+    return unfold (a, { data, key, lib:scope, marks, depth })
   }
 
   case T.context: { // 'withcontext'
-    return unfold (expr[1], op[1])
+    return unfold (a, opdata)
   }
 
   case T.letin: {
     const scope = Object.create (lib)
-    scope [op[1]] = expr[1]
-    // log ('letin', op, scope, expr[2])
-    return unfold (expr[2], { data, key, lib:scope, marks, depth })
+    scope [opdata] = a
+    // log ('letin', op, scope, b)
+    return unfold (b, { data, key, lib:scope, marks, depth })
   }
 
   case T.bind:
   case T.bindi: {
-    key = op[1] .substr(1)
+    key  = opdata.substr (1)
     data = data == null ? undefined : data[key]
-    return unfold (expr[1], { data, key, lib, marks, depth })
+    return unfold (a, { data, key, lib, marks, depth })
   }
 
   case T.ttest: {
-    let test = op[1] .substr (2)
+    let test = opdata.substr (2)
     let _type = data === null ? 'null'
       : Array.isArray (data) ? 'array' : typeof data
     if (_type === 'object' && data.type) _type = data.type
     // log ('test', test, _type)
     if (test !== _type) return [null, VOID, VOID];
     // Adds test to classList
-    const [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (a, context)
     if (elem && elem.classList) elem.classList.add (test)
     return [elem, subs, sibs]
   }
 
   case T.test: {
-    let test = op[1] .substr (1)
+    let test = opdata.substr (1)
     let _value = data == null ? false : data[test]
     if (!_value) return [null, VOID, VOID];
     // Adds test to classList
-    const [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (a, context)
     if (elem && elem.classList) elem.classList.add (test)
     return [elem, subs, sibs]
   }
@@ -135,8 +139,8 @@ function unfold (expr, context = {})  {
     if (data == null) return [null, VOID, VOID]
     if (typeof data !== 'object') data = []
     if (data[ITER] == null) {
-      data = (op[1].length > 1)
-        ? iterate (data [op[1] .substr(1)])
+      data = (opdata.length > 1)
+        ? iterate (data [opdata.substr (1)])
         : iterate (data)
       data[ITER] = true
       return unfold (expr, { data, key, lib, marks, depth })
@@ -147,7 +151,7 @@ function unfold (expr, context = {})  {
       const item = data.next ()
       if (item.done) return [null, VOID, VOID]
       const [key, value] = item.value
-      const [elem, subs, sibs] = unfold (expr[1], { data:value, key, lib, marks, depth })
+      const [elem, subs, sibs] = unfold (a, { data:value, key, lib, marks, depth })
       const sibs2 = append (sibs, [[T.context, context], expr])
       return [elem, subs, append (sibs, sibs2)]
     }
@@ -155,25 +159,25 @@ function unfold (expr, context = {})  {
 
   case T.descend: {
     // TODO what about (a + b) > c ? ==> convert to (a > c) + (b > c)
-    const [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (a, context)
     if (!elem) return [null, VOID, VOID]
-    const subs2 = [[T.context, { data, key, lib, marks, depth }], expr[2]]
+    const subs2 = [[T.context, { data, key, lib, marks, depth }], b]
     // log ('descend', { expr, subs, subs2 })
     return [elem, append (subs, subs2), sibs]
   }
 
   case T.sibling: {
-    const [elem, subs, sibs] = unfold (expr[1], context)
-    if (elem == null) return unfold (expr[2], context)
+    const [elem, subs, sibs] = unfold (a, context)
+    if (elem == null) return unfold (b, context)
     // TODO prevent superfluous withContext nodes (check that)
-    const sibs2 = [[T.context, context], append (sibs, expr[2])]
+    const sibs2 = [[T.context, context], append (sibs, b)]
     return [elem, subs, sibs2] // TODO should subs be passed the context?
   }
 
   case T.append: {
-    const [elem, subs, sibs] = unfold (expr[1], context)
+    const [elem, subs, sibs] = unfold (a, context)
     if (elem == null) return [null, VOID, VOID]
-    const subs2 = append (subs, [[T.context, context], expr[2]])
+    const subs2 = append (subs, [[T.context, context], b])
     return [elem, subs2, sibs]
   }
 
@@ -186,25 +190,27 @@ function unfold (expr, context = {})  {
   }
 
   case T.class: {
-    const [elem, subs, sibs] = unfold (expr[1], context)
-    if (elem && elem.classList) elem.classList.add (op[1] .substr (1))
+    const [elem, subs, sibs] = unfold (a, context)
+    if (elem && elem.classList)
+      elem.classList.add (opdata.substr (1))
     return [elem, subs, sibs]
   }
     
   case T.hash: {
-    const [elem, subs, sibs] = unfold (expr[1], context)
-    if (elem && elem.setAttribute) elem.setAttribute ('id', op[1] .substr (1))
+    const [elem, subs, sibs] = unfold (a, context)
+    if (elem && elem.setAttribute)
+      elem.setAttribute ('id', opdata.substr (1))
     return [elem, subs, sibs]
   }
     
   case T.attr: {
-    const [elem, subs, sibs] = unfold (expr[2], context)
-    if (elem && elem.setAttribute) setAttributes (elem, expr[1], context)
+    const [elem, subs, sibs] = unfold (b, context)
+    if (elem && elem.setAttribute) setAttributes (elem, a, context)
     return [elem, subs, sibs]
   }
 
   default:
-    throw new TypeError (`eval: unknown operator type: ${tag} ${N[tag]}`)
+    throw new TypeError (`eval: unknown operator type: ${opcode} ${N[opcode]}`)
   }
 }
 
@@ -212,6 +218,10 @@ function append (x, y) {
   if (x[0][0] === T.void) return y
   if (y[0][0] === T.void) return x
   return [[T.sibling, '+'], x, y]
+}
+
+function show (input) {
+  return input == null ? '' : String (input)
 }
 
 // ### Attribute evaluation
@@ -225,14 +235,15 @@ function setAttributes (elem, expr, context) {
 }
 
 function setAttribute (elem, expr, context) {
+  const op = expr[0], opcode = op[0], opdata = op[1]
   // log ('setAttribute', elem, expr)
-  if (expr[0][0] === T.unquoted) elem.setAttribute (expr[0][1], '')
-  if (expr[0][0] === T.assign) elem.setAttribute (expr[1][0][1], evalAttribute(expr[2], context))
+  if (opcode === T.unquoted) elem.setAttribute (opdata, '')
+  if (opcode === T.assign)   elem.setAttribute (expr[1][0][1], evalAttribute(b, context))
 }
 
-function evalAttribute ([[tag,opdata]], context) {
+function evalAttribute ([[opcode,opdata]], context) {
   const data = context.data
-  switch (tag){
+  switch (opcode){
     case T.keyIn: return context.key
     case T.valueIn: return data == null ? '' : opdata === '%' ? String (data) : String (data[opdata.substr(1)]) // TODO failsafe
     default: return opdata
@@ -246,7 +257,6 @@ function evalAttribute ([[tag,opdata]], context) {
 function* emptyGenerator (){}
 const Generator = emptyGenerator.constructor
 
-const ITER = Symbol ('unfold.generator')
 function* iterate (data) {
   if (data != null) {
     if (Symbol.iterator in data) {
@@ -255,8 +265,6 @@ function* iterate (data) {
     else yield* Object.entries (data)
   }
 }
-
-
 
 
 // Exports
