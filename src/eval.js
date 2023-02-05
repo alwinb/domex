@@ -238,7 +238,7 @@ function setAttribute (elem, expr, context) {
   const op = expr[0], opcode = op[0], opdata = op[1]
   // log ('setAttribute', elem, expr)
   if (opcode === T.unquoted) elem.setAttribute (opdata, '')
-  if (opcode === T.assign)   elem.setAttribute (expr[1][0][1], evalAttribute(b, context))
+  if (opcode === T.assign)   elem.setAttribute (expr[1][0][1], evalAttribute(expr[2], context))
 }
 
 function evalAttribute ([[opcode,opdata]], context) {
