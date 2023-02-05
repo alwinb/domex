@@ -1,4 +1,3 @@
-import { inspect } from 'util'
 import { createUnfold } from './eval.js'
 import { nodeTypes as T, typeNames as N } from './signature.js'
 
@@ -12,6 +11,10 @@ const define = (obj, arg2, arg3) => typeof arg2 === 'string'
 
 // Dom Compat (sub API)
 // --------------------
+
+// A minimal emulation of the browsers' DOM API to support the
+// use of Domex in non-browser environments. It only provides the
+// interfaces that are needed by the Domex unfolder.
 
 class Element {
 
@@ -58,28 +61,45 @@ class ClassList extends Array {
   }
 }
 
-// Instantiate the evaluator
-// -------------------------
+// Evaluating
+// ----------
+
+// The following is used to create an unfold function 
+// for dom expressions that uses the minimal DOM emulation
+// layer for constructing the output DOM.
+
+const createTextNode = data =>
+  data
+
+const createElement = tagName =>
+  new Element (tagName)
+
+// The UnsafeRaw class is used as an object for
+// uninterpreted HTML code that may occur alongside
+// Element- and other nodes. It is only supported in 
+// non-browser contexts.
 
 function UnsafeRaw (data) {
   this.value = data
 }
 
-const createTextNode = data =>
-  data
-
 const _createRawHTMLNode = data =>
   new UnsafeRaw (data)
 
-const createElement = tagName =>
-  new Element (tagName)
-
+// Instantiate the unfold function:
 
 const unfold =
   createUnfold ({ createElement, createTextNode, _createRawHTMLNode })
 
 
-// ### Render to html / stream
+// Rendering
+// ---------
+
+// The following is used to incrementally unfold a domex, to a 
+// DOM-tree and to render the tree to a stream of raw HTML code.
+
+// To render the Element nodes correctly, we need a map of element-
+// tagNames of 'void Elements' as end-tags for them must not be produced.
 
 const voidTags = {
   area:1,    base:1,  basefont:1,
