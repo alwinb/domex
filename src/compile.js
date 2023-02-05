@@ -4,12 +4,25 @@ const log = console.log.bind (console)
 
 // `preEval` Algebra
 // =================
-// Some pre-evaluation;
-// Assert some additional type constraints.
 
-// Applies the 'stack of postfix operators' ops
-// and if named, add a binary 'let' operator akin to
+// This is a first-pass transformation that can be applied
+// incrementally during the parsing process.
+// It is specified in terms of an algebra (that discards the
+// grouping/ types, though) for the hoop signature, ie. the
+// definition of the low-level AST structure.
+
+// The unfold / evaluator works on a slightly simplified and
+// restricted AST structure. This pass can be seen as a kind
+// of syntactic desugaring. 
+
+// It applies the 'stack of postfix operators' ops
+// and if named, add a binary 'let _ in _' operator akin to
 // let/name = expr1 in expr2
+
+// (REVIEW, I want to further restrict the allowed order of the 
+// postfix/modifier operators to make sure that attributes are
+// always bound to the same object to which their owner element
+// gets bound, or to a descendent object thereof.
 
 function bindDefs ({ expr, ops, name }) {
   if (ops) { let o, l
@@ -126,6 +139,13 @@ function preEval (...expr) {
     }
 
     // ### Attributes
+    
+    // This evaluates the hoop AST for attribute lists, consisting of
+    // attribute names, attribute value-expressions, assignment and
+    // collate (say, attribute-list concatenation). 
+    // It also checks the AST node types, so make sure that the 
+    // assignment operators are not nested inside each other and that
+    // the left operand is always an attribute-name.
 
     case T.collate: 
       for (let i=1,l=expr.length; i<l; i++) { // Type check
@@ -150,6 +170,10 @@ function preEval (...expr) {
     }
 
     // ### Strings
+    
+    // This evaluates the hoop AST for strings, which consist of 
+    // raw character rdata, the empty string, escape sequeces and 
+    // a concatenation operator; to a javascript string.
 
     case T.strChars:  return opdata
     case T.escape:    return _escapes [opdata[1]] || opdata[1]
