@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises'
 import { parse, nodeTypes as T } from './signature.js'
 import { preEval, bindDefs } from './compile.js'
-import { _render } from './dom.js'
+import { _render } from './nodom.js'
 const log = console.log.bind (console)
 
 

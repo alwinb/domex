@@ -1,7 +1,7 @@
 .PHONY: all clean run
 
 srcdir = src/
-files = signature.js hoop2.js compile.js unfold.js dom.js index.js browser.js 
+files = hoop2.js signature.js compile.js unfold.js nodom.js browser.js index.js
 bundle-name = domex
 bundle-entry = browser.js
 sources = $(addprefix $(srcdir), $(files))
