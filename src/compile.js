@@ -31,8 +31,8 @@ const _escapes =
 
 function preEval (...expr) {
   // log ('preEval', expr)
-  const [[tag, data], x, y] = expr
-  switch (tag) {
+  const [[opcode, opdata], x, y] = expr
+  switch (opcode) {
 
     // ### Dom operands
 
@@ -49,7 +49,7 @@ function preEval (...expr) {
 
     case T.value: { // Split e.g. %foo into %~foo
       const ref = [[T.value, '%']]
-      let ops = data.length > 1 ? [[T.bind, '~' + data.substr(1)], null] : null
+      let ops = opdata.length > 1 ? [[T.bind, '~' + opdata.substr(1)], null] : null
       return { expr:ref, ops, name:null }
     }
 
@@ -77,7 +77,7 @@ function preEval (...expr) {
       return { expr: [[T.withlib, lib], last.expr], name:last.name, ops:last.ops } 
 
     case T.descend: {
-      const op = [T.descend, data]
+      const op = [T.descend, opdata]
       const _expr = [op, x.expr, bindDefs (y)]
       return { expr: bindDefs ({ ops:x.ops, expr:_expr, name:x.name }) }
     }
@@ -86,8 +86,8 @@ function preEval (...expr) {
 
     case T.def:
       if (x.name != null)
-        throw new Error (`expression ${data} is already named ${name}`)
-      return { name:data, expr:x.expr, ops:x.ops }
+        throw new Error (`expression ${opdata} is already named ${name}`)
+      return { name:opdata, expr:x.expr, ops:x.ops }
 
     case T.iter:
       return { ops:[expr[0], x.ops], name:null, expr:x.expr }
@@ -119,8 +119,8 @@ function preEval (...expr) {
 
     case T.addvalue:
     case T.addvaluei: {
-      let vexpr = [[T.value, data]]
-      if (data.length > 1) vexpr = [[T.bind, '~'+data.substr(1)], vexpr]
+      let vexpr = [[T.value, opdata]]
+      if (opdata.length > 1) vexpr = [[T.bind, '~'+opdata.substr(1)], vexpr]
       const expr = [[T.append, " "], x.expr, vexpr]
       return { ops: x.ops, name:x.name, expr }
     }
@@ -151,18 +151,19 @@ function preEval (...expr) {
 
     // ### Strings
 
-    case T.strChars:  return data
-    case T.escape:    return _escapes [data[1]] || data[1]
+    case T.strChars:  return opdata
+    case T.escape:    return _escapes [opdata[1]] || opdata[1]
     case T.empty:     return ''
-    case T.hexescape: return String.fromCodePoint (parseInt (data.substr(2), 16))
+    case T.hexescape: return String.fromCodePoint (parseInt (opdata.substr(2), 16))
     case T.strCat:    return x + y
 
     default:
-      throw new TypeError (`compile: unknown operator type: ${tag} ${N[tag]}`)
+      throw new TypeError (`compile: unknown operator type: ${opcode} ${N[opcode]}`)
   }
 }
 
 
 // Exports
 // -------
+
 export { preEval, bindDefs }
