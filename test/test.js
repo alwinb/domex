@@ -1,4 +1,4 @@
-import { DomEx, domex } from '../src/index.js'
+import { Domex, domex } from '../src/index.js'
 const log = console.log.bind (console)
 
 // Test
@@ -67,7 +67,7 @@ const path = new URL (import.meta.url) .pathname .split ('/')
 path [path.length-1] = ''
 const __dirname = path.join ('/')
 
-const e = DomEx.fromFile (__dirname + '/test.dx', (err,dx) => {
+const e = Domex.fromFile (__dirname + '/test.dx', (err,dx) => {
   if (err) log (err)
   else dx.renderTo ({ name:'joe' }, process.stdout)
   process.exit (205)
