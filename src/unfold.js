@@ -210,7 +210,7 @@ function unfold (expr, context = {})  {
   }
 
   default:
-    throw new TypeError (`eval: unknown operator type: ${opcode} ${N[opcode]}`)
+    throw new TypeError (`unfold: unknown operator type: ${opcode} ${N[opcode]}`)
   }
 }
 

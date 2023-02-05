@@ -99,7 +99,7 @@ const compiled = compile (signature)
 // ----------------
 
 // Additional, syntax-less node-types that
-// are used in compile and eval,
+// are used in compile and unfold,
 
 const additional = {
   void:      tokenType (), // The empty NodeList

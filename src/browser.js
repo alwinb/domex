@@ -1,6 +1,6 @@
 import { parse, nodeTypes as T } from './signature.js'
 import { preEval, bindDefs } from './compile.js'
-import { createUnfold, refKey } from './eval.js'
+import { createUnfold, refKey } from './unfold.js'
 
 const createElement = document.createElement.bind (document)
 const createTextNode = document.createTextNode.bind (document)
