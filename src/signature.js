@@ -1,7 +1,9 @@
 import {
   Parser, token, tokenType,
-  Roles, start, atom, postfix, infix, assoc, end,
+  Roles, start, atom, postfix, infix as infixr, assoc, end,
   compile } from './hoop2.js'
+  // NB I've not implemented infixl yet in hoop
+  // (though its easy)
 
 const { LEAF, POSTFIX } = Roles
 const log = console.log.bind (console)
@@ -46,8 +48,8 @@ const signature = {
       , text:      wrapfix `["]  ${'Chars'} ["]` },
       { declare:   assoc   `[;]` }, // TODO also allow it in postfix pos
       { orelse:    assoc   `[|]` },
-      { descend:   infix   `[>]`
-      , sibling:   infix   `[+]` },
+      { descend:   infixr  `[>]`
+      , sibling:   infixr  `[+]` },
       { class:     postfix `[.] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , hash:      postfix `[#] [a-zA-Z_\-] [a-zA-Z0-9_\-]*`
       , def:       postfix `[@] [a-zA-Z_] [a-zA-Z0-9_]*`
@@ -76,7 +78,7 @@ const signature = {
       , keyIn:     atom `[$]`
       , stringIn: [LEAF, raw `["]`,  'Chars',  raw `["]`] }, // wrapfix-atom
       { collate:  assoc `.{0} (?![[=])` },
-      { assign:   infix `[=]` },
+      { assign:   infixr `[=]` },
     ],
   },
 
@@ -88,7 +90,7 @@ const signature = {
       , escape:    atom `[\\]["/\\bfnrt]`
       , hexescape: atom `[\\]u[a-fA-F0-9]{4}`
       , empty:     atom `.{0}(?=")` },
-      { strCat:   infix `.{0}(?!")` }
+      { strCat:   infixr `.{0}(?!")` }
     ],
   },
 }

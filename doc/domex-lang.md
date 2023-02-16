@@ -1,15 +1,14 @@
 The Domex Language
 ==================
 
-Domex is an expression language for creating DOM trees from input data.
-It serves the purpose of a template language, but it is quite different from traditional template languages. 
-Instead it has taken on some of the characteristics of a specification, or a data description language. 
+Domex is an algebraic expression language for creating DOM trees from input data.
+It can be used as a template language for HTML, but it is quite different from traditional template languages. It has characteristics of a specification– or a data description language. 
 
 
 Grammar
 -------
 
-The abstract syntax of Domex is given by the following grammar. 
+The abstract syntax of Domex is given by the following grammar. The grammar consists of two main categories: DOM expressions _E_ and AttributeList expressions _Attrs_, where the latter makes use of attribute expressions _A_ and attribute-value expressions _V_.
 
 <center>
 
@@ -41,6 +40,11 @@ V   ::=     _text_     |     `$`     |     `%`
 
 </center>
 
+Operator Precedence
+-------------------
+
+…
+
 
 Semantics
 ---------
@@ -62,14 +66,14 @@ DOM Expressions denote render **functions** that take structured data as input t
 - _E_`#`_id_ — sets the `id` attribute of the last element of _E_ to _id_.
 - _E_`[`_name_`=`_value_`]` — adds an attribute named _name_ with value _value_ to the last element of the result of _E_. 
 
+**Note**: I am still looking at the design of the attribute operators. The question is, should they indeed only 'apply to the last element'? ==> NO
+
 
 ### Child and Sibling Combinators
 
 - _E1_ `>` _E2_ — adds _E2_ as children to all element in _E1_.
 - _E1_ `+` _E2_ — adds _E2_ as siblings to _E1_.
-- _E1_ `|` _E2_ — the 'or-else' operator – is equivalent to _E2_ if _E1_ evaluates to an empty list, otherwise it is equivalent to _E1_. 
-
-**Note**: I am still looking at the design of the `>` operator, and similarily the attribute operators. The question is, should they indeed only 'apply to the last element'? 
+- _E1_ `|` _E2_ — the _or–else_ operator – equivalent to _E2_ if _E1_ evaluates to an empty list; otherwise equivalent to _E1_. 
 
 
 ### Decomposition :=: Selection and Iteration

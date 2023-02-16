@@ -158,11 +158,13 @@ function unfold (expr, context = {})  {
   }
 
   case T.descend: {
-    // TODO what about (a + b) > c ? ==> convert to (a > c) + (b > c)
+    if (a[0][0] === T.sibling)
+      // Syntactic transformation: (a1 + a2) > b ==> (a1 > b) + (a2 > b)
+      return unfold ([[T.sibling, '+'], [[T.descend, '>'], a[1], b], [[T.descend, '>'], a[2], b]])
+    // else unfold
     const [elem, subs, sibs] = unfold (a, context)
     if (!elem) return [null, VOID, VOID]
     const subs2 = [[T.context, { data, key, lib, marks, depth }], b]
-    // log ('descend', { expr, subs, subs2 })
     return [elem, append (subs, subs2), sibs]
   }
 
