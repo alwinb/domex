@@ -41,6 +41,10 @@ var sample = domex `
 ) @json
 `
 
+// TextMate: Show result as HTML
+// process.exitCode = 205
+domex `("text" + b) #c` .renderTo ({}, process.stdout)
+
 var sample = domex `@default`
 var sampleData = [1,2,34, {a:2, b:[1,2]}]
 sample.renderTo (sampleData, process.stdout)
@@ -49,7 +53,6 @@ sample.renderTo (sampleData, process.stdout)
 var sample = domex `pre % + " as HTML: " + @unsafe-raw-html`
 var sampleData = '<b>test</b>'
 sample.renderTo (sampleData, process.stdout)
-
 
 //process.exit (205)
 
@@ -70,6 +73,5 @@ const __dirname = path.join ('/')
 const e = Domex.fromFile (__dirname + '/test.dx', (err,dx) => {
   if (err) log (err)
   else dx.renderTo ({ name:'joe' }, process.stdout)
-  process.exit (205)
 })
 

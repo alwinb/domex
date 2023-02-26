@@ -6,12 +6,10 @@ const log = console.log.bind (console)
 // Test
 // ====
 
-//var sample = 'a + b [foo="bar\\nbee"] + div @host'
-//var sample = 'a "foo\\nbar"; form @b > c@d; e@f'
+
 var samples = [
   'p > "hello\\nworld" + a + b',
   'a[d="e\\nf"]',
-  // 'a[d=f=g]', // must throw
   'a[d=f]',
   'a[b =c d="e\\n" f g]',
   'a + b + g + (c | d | e) + e + f',
@@ -19,7 +17,6 @@ var samples = [
   '(a + b + c)*name',
   'a; b; c',
   'a[a=b c=d f=%]',
-  // '(form @login #login > input + button) @foo', // must throw
   '(form @login #login > input + button)* @foo',
   '(a@A | b@B | c) @foo',
   'a@A:a > b:b@B',
@@ -46,9 +43,6 @@ var samples = [
   'a[d=%]',
   'a[d=a s="b" c d=e]',
   'a[d=a s="b" c=%name d=e %]',
-  'a["test"]', // must trhow
-  'a[%]',      // must trhow
-  'a[a=a %]',  //must throw
   'a[a=a b=%]',
   'a[a "b"]',
   'a[a=a]',
@@ -57,6 +51,16 @@ var samples = [
   'a[a="b"]',
   'a[a="b\\nc" c=d]',
   'p > "this is domex :)"',
+  '(form @login #login > input + button) @foo', // I guess that is ok? Tagging # on top of login later?
+  'a + b [foo="bar\\nbee"] + div @host', // REVIEW Allow newlines? Hm I think so. Very useful for style / script
+  'a "foo\\nbar"; form @b > c@d; e@f'
+]
+
+var antisamples = [ // These must throw
+  'a["test"]',
+  'a[%]',
+  'a[a=a %]',
+  'a[d=f=g]',
 ]
 
 var sample = samples[samples.length-1]

@@ -46,8 +46,7 @@ function unfold (expr, context = {})  {
     // TODO clean this up alright
     //*
     if (data != null && type === 'object' || type === 'function') {
-      if (marks[name] == null)
-        marks[name] = new WeakMap
+      if (marks[name] == null) marks[name] = new WeakMap
       const seen = marks[name].get (data)
       if (seen == null || seen > depth) marks[name] .set (data, depth)
       else if (depth > seen) data = Symbol ('Circular')
@@ -58,13 +57,17 @@ function unfold (expr, context = {})  {
     const expr = lib[name]
     let data_ = data
 
-    // Quick hack to tag the model onto the elements
-    // NB for the time being, on components:
-    // - value is the unprepared / input data
-    // - key is the input's key
-    // - data is the _prepared_ data!
-
     if ('ast' in expr) { // instanceof Domex
+
+      // Hack to tag the model onto the elements
+      // (Basically, this allows javascript to be used for desructuring/
+      // analysing the input data on 'components, ie. @ dereference boundaries )
+
+      // NB for the time being, on components:
+      // - value is the unprepared / input data
+      // - key is the input's key
+      // - data is the _prepared_ data!
+  
       if (typeof expr.prepareData === 'function') {
         data_ = expr.prepareData (data, key)
         context.data = data_
@@ -158,10 +161,10 @@ function unfold (expr, context = {})  {
   }
 
   case T.descend: {
+    // Syntactic transformation: (a1 + a2) > b ==> (a1 > b) + (a2 > b)
     if (a[0][0] === T.sibling)
-      // Syntactic transformation: (a1 + a2) > b ==> (a1 > b) + (a2 > b)
       return unfold ([[T.sibling, '+'], [[T.descend, '>'], a[1], b], [[T.descend, '>'], a[2], b]])
-    // else unfold
+    // else unfold as usual
     const [elem, subs, sibs] = unfold (a, context)
     if (!elem) return [null, VOID, VOID]
     const subs2 = [[T.context, { data, key, lib, marks, depth }], b]
@@ -192,6 +195,10 @@ function unfold (expr, context = {})  {
   }
 
   case T.class: {
+    // Syntactic transformation: (a1 + a2) .b ==> a1.b + a2.b
+    if (a[0][0] === T.sibling)
+      return unfold ([[T.sibling, '+'], [op, a[1]], [op, a[2]]])
+    // else unfold as usual
     const [elem, subs, sibs] = unfold (a, context)
     if (elem && elem.classList)
       elem.classList.add (opdata.substr (1))
@@ -199,6 +206,11 @@ function unfold (expr, context = {})  {
   }
     
   case T.hash: {
+    // // Syntactic transformation: (a1 + a2) #b ==> a1#b + a2#b
+    // // REVIEW, that'd mean multupe ids
+    // if (a[0][0] === T.sibling)
+    //   return unfold ([[T.sibling, '+'], [op, a[1]], [op, a[2]]])
+    // else unfold as usual
     const [elem, subs, sibs] = unfold (a, context)
     if (elem && elem.setAttribute)
       elem.setAttribute ('id', opdata.substr (1))
