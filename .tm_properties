@@ -15,3 +15,6 @@ TM_RUN_TARGET = ../test/compile-test.js
 
 [src/eval.js]
 TM_RUN_TARGET = ../test/test.js
+
+[src/tokeniser.new.js]
+TM_RUN_TARGET = ../test/tokeniser-test.js
