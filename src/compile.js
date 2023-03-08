@@ -5,15 +5,13 @@ const log = console.log.bind (console)
 // `preEval` Algebra
 // =================
 
-// This is a first-pass transformation that can be applied
-// incrementally during the parsing process.
-// It is specified in terms of an algebra (that discards the
-// grouping/ types, though) for the hoop signature, ie. the
-// definition of the low-level AST structure.
+// This is a first-pass transformation that is applied incrementally
+// during the parsing process. It is specified in terms of an algebra for
+// the low-level AST as produced by the parser, and converts it to a 
+// slightly simplified and restricted AST structure.
 
-// The unfold / evaluator works on a slightly simplified and
-// restricted AST structure. This pass can be seen as a kind
-// of syntactic desugaring. 
+// This pass can be seen as a kind of syntactic desugaring and slight
+// pre-evaluation (for instance, evaluating string literals).
 
 // It applies the 'stack of postfix operators' ops
 // and if named, add a binary 'let _ in _' operator akin to
@@ -26,7 +24,7 @@ const log = console.log.bind (console)
 
 function bindDefs ({ expr, ops, name }) {
   if (ops) { let o, l
-    for (o = ops; o[l = o.length - 1] != null; o = o[l]);
+    for (o = ops; o [l = o.length - 1] != null; o = o[l]);
     o[l] = expr
     expr = ops
   }
@@ -140,9 +138,9 @@ function preEval (...expr) {
 
     // ### Attributes
     
-    // This evaluates the hoop AST for attribute lists, consisting of
-    // attribute names, attribute value-expressions, assignment and
-    // collate (say, attribute-list concatenation). 
+    // This evaluates the lower-level hoop AST for attribute lists that
+    // consists of attribute names, attribute value-expressions, assignment
+    // and collate (ie. attribute-list concatenation). 
     // It also checks the AST node types, so make sure that the 
     // assignment operators are not nested inside each other and that
     // the left operand is always an attribute-name.

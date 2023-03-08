@@ -197,28 +197,28 @@ inspector.didMount = function (value, state) {
 // ---------------------
 
 const loader = domex `
-  ( div.Loader:inactive
+  ( div:inactive
     > p "Not loaded"
     + button "Load"
 
-  | div.Loader:loading
+  | div:loading
     > p "Loading" %name
     + button "Abort"
 
-  | div.Loader:aborted
+  | div:aborted
     > p "Request aborted"
     + button "Try again"
 
-  | div.Loader:failed
+  | div:failed
     > p.error "Request failed."
     + button "Try again"
 
-  | div.Loader:complete
+  | div:complete
     > p "Loaded " %name "."
     + button "Reload"
 
-  | div.Loader
-    > p "Request is in an unknown state.") @state;
+  | div
+    > p "Request is in an unknown state.") .Loader @state;
   
   div.Resource
     > h3 "Resource"

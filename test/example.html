@@ -62,9 +62,8 @@ json.elem.addEventListener ('click', evt => {
   // But it might be good to also access the refs from here. 
   const root = evt.currentTarget
   const elem = evt.target
-  const key = elem[Domex.key]
-  const model = elem[Domex.model]
-  log ({ root, elem, model, key })
+  const ref = elem[Domex.refKey]
+  log ({ root, elem, ref })
 })
 
 </script>
