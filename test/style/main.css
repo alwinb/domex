@@ -1,13 +1,136 @@
+h1 {
+  font-size:1.5rem;
+  line-height:1.5rem;
+  margin-bottom:.5rem;
+}
+h2 {
+  font-size:1rem;
+  line-height:1.5rem;
+  margin-bottom:.5rem;
+}
+h3 {
+  margin-top:.5rem;
+  margin-bottom:.5rem;
+}
+pre {
+  tab-size:2;
+  white-space:pre;
+  /* white-space:pre-wrap; */
+}
+
+.Samples li {
+  line-height:1.5rem;
+  border-radius:.15rem;
+  padding:.05rem .7em 0 .7em;
+  margin:0 .25em -.05rem;
+  line-height:calc(15rem/12);
+
+  overflow : hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;  
+}
+
+.Samples li.selected, .Samples li:hover {
+  cursor:pointer;
+  background:var(--select-color);
+  color:var(--select-text-color);
+}
+
+/** Defaults **/
+
+html { font-size:21px; }
+body { font-size:13px; }
+main { margin:0 auto 0 0; width:60vw;}
+
+:root {
+  --screen:#0002;
+  --border-color:#bbb;
+  --link-color: blue;
+  --select-color:#444;
+  --control-color:#fbfbfb;
+  --select-text-color:white;
+/*  background-color:rgb(93.28% 93.45% 90.32%);*/
+  --sidebar-width:6rem;
+}
+
+/** Main Layout **/
+
+body {
+  padding-left:var(--sidebar-width);
+}
+
+header {
+  margin-bottom:1rem;
+  margin-left:calc(-1 * var(--sidebar-width));
+}
+
+aside {
+  margin-left:calc(-1 * var(--sidebar-width));
+  max-height:calc(100vh - 10rem);
+}
+
+/* TODO separate the colors from the layout */
+#input {
+  height:6rem;
+  width:100%;
+	font-family:Hack, Menlo, Monaco, Monospace;
+  border:1px solid var(--border-color);
+  border-radius:4px;
+  background-color: var(--control-color);
+  padding:.1rem .44em;
+  margin-bottom:1rem;
+}
+
+#input:focus {
+  outline:2px auto #003BF3;
+  outline-offset:0px;
+}
+
+.Tokens {
+  margin-bottom:1rem;
+}
+
+/**/
+
+/** Tree view **/
+.AstNode:hover {
+  /*outline:1px solid #ccc;*/
+}
+.AstNode .label {
+  font-family:Hack, Menlo, Monaco, Courier, Monospace;
+  background-color: var(--screen);
+}
+.AstNode .operands {
+  border-left:1px solid currentColor;
+  margin:0 0 0 .55rem;
+  padding:0 0 0 .45rem;
+}
+
+#output pre span {
+  background:var(--screen);
+  white-space:pre;
+  margin:0 .1rem 0;
+  padding:.1rem .05rem 0 .05rem;
+}
+#output pre span.state {
+  background:none;
+  font-family:Sans-Serif;
+  display:inline-block;
+  font-size:.5rem;
+}
+
+pre {
+  font-family:Hack, Menlo, Monaco, Courier, Monospace;
+  font-size:15px;
+  line-height:1rem;
+  display:block;
+  white-space:pre-wrap;
+}
+
+
 /* General page markup
 /* =================== */
 
-html {
-  font-size:21px;
-}
-body {
-  font-size:13px;
-  margin:2rem 1rem 4rem;
-}
 p {
   width:23rem;
 }
