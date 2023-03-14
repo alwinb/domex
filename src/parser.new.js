@@ -12,9 +12,9 @@ const eqclasses = [
 //DLE DC1 DC2 DC3 DC4 NAK SYN ETB CAN EM  SUB ESC FS  GS  RS  US
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
 // SP  !   "   #   $   %   &   '   (   )   *   +   ,   -   .   /                    
-   4,  5,  6,  7,  8,  9,  5,  5,  10, 11, 27, 12, 5,  13, 14, 29, // Out of order
+   4,  5,  6,  7,  8,  9,  5,  5,  10, 11, 28, 12, 5,  13, 14, 30, // Out of order
 // 0   1   2   3   4   5   6   7   8   9   :   ;   <   =   >   ?
-   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 17, 5,  28, 12, 5, // Out of order
+   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 17, 5,  29, 12, 5, // Out of order
 // @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
    18, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 20,
 // P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   _
@@ -24,7 +24,7 @@ const eqclasses = [
 // p   q   r   s   t   u   v   w   x   y   z   {   |   }   ~  DEL
    26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 5,  12, 5,  27, 0 ] // ++ .{ 0 } ** 128;
 
-const num_classes = 30; // max + 1 for 0
+const num_classes = 31; // max + 1 for 0
 assert (eqclasses.length === 128, 'Character class table length')
 
 
@@ -36,7 +36,7 @@ assert (eqclasses.length === 128, 'Character class table length')
 const [
   FAIL,   // Determined non-accepting
   MAIN, BIND, STR,  ESC,  ATTS, S1,   S2,   COL, // Contiguous non-accepting
-  ATT3, ATT2, SID,  ELEM, ATN, IDEN, POST, DATA, COMM, WSPS, WSCR,  // Contiguous accepting
+  ATT2, ATT3, SID,  ELEM, ATN, IDEN, POST, DATA, COMM, WSPS, WSCR,  // Contiguous accepting
   WSNL, INFX, LPAR, RPAR, LQUO, RQUO, CONS, EQ, KEY, LBRA, RBRA,   // Determined accepting
 ] = range (0)
 
@@ -49,37 +49,38 @@ const min_epsilon   = WSNL;
 const ___ = FAIL // cosmetic
 const transitions = [
 //0      1    2     3     4     5     6    7    8    9     10    11    12    13    14    15    16    17    18    19
-//___, MAIN, BIND, STR , ESC , ATTS, S1 , S2 , COL, ATT3, ATT2, SID , ELEM, ATN , IDEN, POST, DATA, COMM, WSPS, WSCR 
+//___, MAIN, BIND, STR , ESC , ATTS, S1 , S2 , COL, ATT2, ATT3, SID , ELEM, ATN , IDEN, POST, DATA, COMM, WSPS, WSCR 
  ___ , ___ , ___ , ___ , ___ , ___ , ___, ___, ___, ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , //  C0_
  ___ , WSPS, WSPS, DATA, ___ , WSPS, ___,COMM, ___, WSPS, WSPS, ___ , ___ , ___ , ___ , WSPS, DATA, COMM, WSPS, ___ , //  HT  
  ___ ,-WSNL,-WSNL,-WSNL, ___ ,-WSNL, ___, ___, ___,-WSNL,-WSNL, ___ , ___ , ___ , ___ ,-WSNL, ___ , ___ ,-WSNL,-WSNL, //  LF  
  ___ , WSCR, WSCR, WSCR, ___ , WSCR, ___, ___, ___, WSCR, WSCR, ___ , ___ , ___ , ___ , WSCR, ___ , ___ , WSCR, ___ , //  CR  
  ___ , WSPS, WSPS, DATA, ___ , WSPS, ___,COMM, ___, WSPS, WSPS, ___ , ___ , ___ , ___ , WSPS, DATA, COMM, WSPS, ___ , //  SP  
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , // other
- ___ ,-LQUO, ___ ,-RQUO,-ESC , ___ , ___,COMM, ___,-LQUO, ___ , ___ , ___ , ___ , ___ , ___ , ___ , COMM, ___ , ___ , //  "  
+ ___ ,-LQUO, ___ ,-RQUO,-ESC , ___ , ___,COMM, ___, ___ ,-LQUO, ___ , ___ , ___ , ___ , ___ , ___ , COMM, ___ , ___ , //  "  
  ___ , SID , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COMM, ___ , ___ , //  #  
- ___ ,-KEY , ___ , DATA, ___ , ___ , ___,COMM, ___,-KEY , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  $  
- ___ , SID , ___ , DATA, ___ , ___ , ___,COMM, ___, SID , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  %  
+ ___ ,-KEY , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ ,-KEY , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  $  
+ ___ , IDEN, ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , IDEN, ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  %  // REVIEW IDEN
  ___ ,-LPAR, ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-LPAR, DATA, COMM, ___ , ___ , //  (  
- ___ , ___ ,-RPAR, DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-RPAR, DATA, COMM, ___ , ___ , //  )  
+ ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-RPAR, DATA, COMM, ___ , ___ , //  )  
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-INFX, DATA, COMM, ___ , ___ , // infix
- ___ , ___ , ___ , DATA, ___ , ATN , ___,COMM, SID, ATN , ___ , SID , ELEM, ATN , ___ , ___ , DATA, COMM, ___ , ___ , //  -  
+ ___ , ___ , ___ , DATA, ___ , ATN , ___,COMM, SID, ___ , ATN , SID , ELEM, ATN , ___ , ___ , DATA, COMM, ___ , ___ , //  -  
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COMM, ___ , ___ , //  .  
- ___ , ___ , ___ , DATA, ___ , ATN , ___,COMM, SID, ATN , ___ , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  0-9 
+ ___ , ___ , ___ , DATA, ___ , ATN , ___,COMM, SID, ___ , ATN , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  0-9 
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, SID, ___ , ___ , ___ , ___ , ___ , ___ , COL , DATA, COMM, ___ , ___ , //  :  
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-INFX, DATA, COMM, ___ , ___ , //  ;  
  ___ , SID , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COMM, ___ , ___ , //  @  
- ___ , ELEM, IDEN, DATA, ___ , ATN , ___,COMM, SID, ATN , ___ , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  A-F 
- ___ , ELEM, IDEN, DATA, ___ , ATN , ___,COMM, ___, ATN , ___ , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  G-Z 
+ ___ , ELEM, IDEN, DATA, ___ , ATN , ___,COMM, SID, ___ , ATN , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  A-F 
+ ___ , ELEM, IDEN, DATA, ___ , ATN , ___,COMM, ___, ___ , ATN , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  G-Z 
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, SID, ___ , ___ , ___ , ___ , ___ , ___ ,-LBRA, DATA, COMM, ___ , ___ , //  [  
  ___ , ___ , ___ , ESC ,-ESC , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , COMM, ___ , ___ , //  \  
  ___ , ___ , ___ , DATA, ___ ,-RBRA, ___,COMM, ___,-RBRA,-RBRA, ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  ]  
- ___ , ___ , IDEN, DATA, ___ , ATN , ___,COMM, SID, ATN , ___ , SID , ___ , ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  _  
- ___ , ELEM, IDEN, DATA, ___ , ATN , ___,COMM, SID, ATN , ___ , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  a-f // REVIEW ESC
- ___ , ELEM, IDEN, DATA,-ESC , ATN , ___,COMM, SID, ATN , ___ , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  g-z // REVIEW ESC
+ ___ , ___ , IDEN, DATA, ___ , ATN , ___,COMM, SID, ___ , ATN , SID , ___ , ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  _  
+ ___ , ELEM, IDEN, DATA,-ESC , ATN , ___,COMM, SID, ___ , ATN , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  a-f // REVIEW ESC
+ ___ , ELEM, IDEN, DATA,-ESC , ATN , ___,COMM, SID, ___ , ATN , SID , ELEM, ATN , IDEN, ___ , DATA, COMM, ___ , ___ , //  g-z // REVIEW ESC
  ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-BIND, DATA, COMM, ___ , ___ , //  ~  
- ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ ,-EQ  , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  =  
- ___ , S1  , S1  , DATA,-ESC , S1  , S2 ,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , S1  , DATA, COMM, ___ , ___   //  "/" // REVIEW ESC
+ ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ ,-BIND, DATA, COMM, ___ , ___ , //  *  
+ ___ , ___ , ___ , DATA, ___ , ___ , ___,COMM, ___,-EQ  , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COMM, ___ , ___ , //  =  
+ ___ , S1  , ___ , DATA,-ESC , S1  , S2 ,COMM, ___, ___ , ___ , ___ , ___ , ___ , ___ , S1  , DATA, COMM, ___ , ___   //  "/" // REVIEW ESC
 ]
 
 // ATT2 is 'after attribute name'
@@ -90,10 +91,36 @@ assert (WSCR === 19, 'Transition table width '+WSCR)
 assert (transitions.length === min_epsilon * num_classes, 'Transition table size')
 
 
+// Operators
+// ---------
+
+const Left  = -1
+const Assoc = 0
+const Right = 1
+
+const optable = {
+  // Infix ops // lexer ensures infix position
+  ';': [1, Assoc],
+  '|': [2, Assoc],
+  '+': [4, Right],
+  '>': [4, Right],
+   '': [5, Left], 
+  '~': [6, Left], // Bind - lexer ensures rhs is an identifier
+  // Postfix ops - Lexer ensures postfix position
+  // '.': [6, Left],
+  // '#': [6, Left],
+  // '@': [6, Left],
+  // ':': [6, Left],
+  // Attribute Lists
+  // '': [1, Assoc], // lexer ensures lhs/rhs are not nested
+  '=': [2, Assoc], // lexer ensures lhs/rhs are not nested
+}
+
+
 // Runtime
 // -------
 
-function Tokeniser (delegate, entryState = MAIN) {
+function Parser (delegate, entryState = MAIN) {
 
   // DFA driver state
 
@@ -111,6 +138,10 @@ function Tokeniser (delegate, entryState = MAIN) {
   this.parse = function (input) {
     this.write (input)
     // this.end ()
+  }
+
+  this._tree = function () {
+    return { operands, ops, ars, depths }
   }
 
   this.write = function write (input) {
@@ -148,18 +179,20 @@ function Tokeniser (delegate, entryState = MAIN) {
           depth--; entry = POST; break;
 
         case INFX:
-          // OK so compare against stack
+          handleInfix ([match, input.substring (anchor, end)])
           entry = MAIN; break;
 
         case POST: // POST token match corresponds to implicit infix juxstaposition
+          handleInfix ([match, input.substring (anchor, end)])
           entry = MAIN; break;
 
         case BIND: // BIND token match corresponds to pseudo-infix ~ (and/or *)
+          handleInfix ([match, input.substring (anchor, end)])
           entry = BIND; break;// REVIEW identifier/vs elem after * op?
 
         case ELEM: case IDEN: case SID: case KEY: // Operand
           operands.push ([match, input.substring (anchor, end)]); // TODO not (always) for SID
-          entry = entry === MAIN ? POST : ATTS; break // FIXME dont use SID for %name in ATTS
+          entry = entry === MAIN || entry === BIND ? POST : ATTS; break // FIXME dont use SID for %name in ATTS
 
 
         // Attribute Lists
@@ -169,6 +202,7 @@ function Tokeniser (delegate, entryState = MAIN) {
 
         case RBRA:
           // Lexer ensures depth > 1
+          // FIXME turn into higher order operator
           depth--; entry = POST; break
 
         case ATT2: case ATT3:
@@ -176,9 +210,10 @@ function Tokeniser (delegate, entryState = MAIN) {
 
         case ATN:
           operands.push ([match, input.substring (anchor, end)])
-          entry = ATT2; break; // After Attribute Name
+          entry = entry === ATTS ? ATT2 : ATTS; break; // After Attribute Name
 
         case EQ:
+          handleInfix ([match, input.substring (anchor, end)])
           entry = ATT3; break;
 
         // Strings
@@ -216,6 +251,14 @@ function Tokeniser (delegate, entryState = MAIN) {
 
       anchor = pos = end
     }
+    
+    _end ()
+  }
+
+  function _end () {
+    // End of input; apply all remaining operators
+    for (let i=ops.length-1; i>=0; i--)
+      _apply (ops.pop (), ars.pop (), depths.pop ())
   }
 
   // Private
@@ -227,10 +270,60 @@ function Tokeniser (delegate, entryState = MAIN) {
     
   }
 
+  function handleInfix (op_b) {
+    while (1) {
+      let action;
+
+      if (ops.length === 0)
+        action = Right
+
+      else {
+        const op_a = ops[ops.length-1]
+        log (op_a)
+        const [a_rank, a_assoc] = optable [op_a[1]]
+        const [b_rank, b_assoc] = optable [op_b[1]]
+        const top_depth = depths[ops.length-1]
+
+      action
+        = top_depth < depth ? Right
+        : top_depth > depth ? Left
+        : a_rank > b_rank   ? Left
+        : a_rank < b_rank   ? Right
+        : a_assoc  // last case should assert a_assoc == b_assoc in the operator table
+      }
+
+      if (action === Left)
+        _apply (ops.pop (), ars.pop (), depths.pop ())
+        // and retry -- back to while
+
+      else if (action === Assoc) {
+        ars[l]++;
+        break
+      }
+      
+      else if (action === Right) {
+        ops.push (op_b)
+        ars.push (2) // TODO extend for postfix ops
+        depths.push (depth)
+        break;
+      }
+    }
+  }
+
+
+  // AST construction
+  function _apply (op, arity) {
+    log ('apply', { operands, ops, arity, op})
+    // Assumes operands.length >= arity
+    const args = operands.slice (operands.length - arity)
+    operands.length -= arity
+    operands.push ([op, ...args])
+  }
+
 }
 
 
 // Exports
 // -------
 
-export { Tokeniser }
+export { Parser }
