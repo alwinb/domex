@@ -56,12 +56,11 @@
 
   // ### Wrap Tokeniser
   
-  function tokenise (input) {
+  function parse (input) {
     const tokens = []
     const t = new Parser ({ write: (token, _entry) => tokens.push (_entry, token) })
     t.parse (input)
-    log ('Tree', t._tree())
-    return tokens
+    return { tokens, tree:t._tree () }
   }
 
   // ### Set up event handlers
@@ -75,8 +74,8 @@
   let selected
   document.addEventListener ('click', evt => {
     let key
-    if (key = evt.target.getAttribute('data-key')) {
-      const sample = samples[parseInt(key)]
+    if (key = evt.target.getAttribute ('data-key')) {
+      const sample = samples [parseInt(key)]
       if (selected) selected.classList.remove ('selected')
       selected = evt.target
       selected.classList.add ('selected')
@@ -91,29 +90,30 @@
     if (input === lastInput) return
     lastInput = input;
     $('input').value = input
-    const tokens = tokenise (input)
+    const { tokens, tree } = parse (input)
     const rendered = tokensdx.render (tokens) .elems
     $('output').innerHTML = ''
     $('output').append (rendered)
-    try {
-      const dx = new Domex (input)
-      // $('output').append (domex `
-      //   section > h2 "AST" + @default ~ast
-      // ` .render (dx) .elems)
-      $('output').append (vizAst (dx.ast))
-    }
-    catch(e){}
+    $('output').append (vizAst (tree.operands[0]))
   }
   
   function vizAst (ast) { // visualises a domex AST
-    const [[op, opdata], left, right] = ast
-    const node = domex `
-      div.AstNode 
-        > span.label[title=%op] %opdata
-        + div.operands` .render ({op, opdata}) .elem
-      if (left) node.lastChild.append (vizAst (left))
-      if (right) node.lastChild.append (vizAst (right))
-    return node
+    log ({ast})
+
+    // return domex `@default` .render (ast) .elem
+
+    if (Array.isArray (ast[0])) { // Node
+      const [[op, opdata], ...children] = ast
+      const node = domex `
+        div.AstNode 
+          > (b[title=%op] > (%:length~opdata | "ε"))
+          + div.operands` .render ({op, opdata}) .elem
+        for (const x of children)
+          node.lastChild.append (vizAst (x))
+      return node
+    }
+
+    return domex `div.AstNode [title=%op] > (%:length~opdata | "ε")` .render ({op:ast[0], opdata:ast[1]}) .elem
   }
 
   // ### Main
@@ -121,6 +121,9 @@
   function main () {
     document.body.append (uidx.render ({ version, samples }) .elems)
     showInput (samples[0])
+    selected = document.querySelector('li[data-key="0"]')
+    selected.classList.add ('selected')
+    $('input').focus ()
   }
 
   main ();

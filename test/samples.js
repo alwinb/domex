@@ -1,4 +1,5 @@
 const samples = [
+  'div > foo + bar',
   'div > "foo\\nbar" + %',
   'div > "foo" + %name',
   'foo + bar + baz | bee@a +  buzz + bazz | boo',
@@ -10,7 +11,7 @@ const samples = [
   'a#foo + b.boo > c > "zo\\no"',
   'a + b + c | d + e + f | g | h [i=j]',
   '\n( span::number    .number    > %)',
-  'a@one [foo="bee\\bar"] > (b | c) +d ; two@a > three',
+  'a@one [foo="bee\\tbar"] > (b | c) +d ; two@a > three',
   `elem "bar" + bee`,
   `h1 %title`,
   `span $`,
