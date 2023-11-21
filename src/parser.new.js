@@ -1,6 +1,7 @@
 const log = console.log.bind (console)
 function* range (a, z = Infinity) { while (a <= z) yield a++ }
 function assert (arg, message) { if (!arg) throw new Error ('Assertion Failed: ' + message ?? '') }
+const intsInto = (map, i = 0) => new Proxy ({}, { get:($,k) => (map [k] = i, i++) })
 
 
 // Character Equivalence classes
@@ -33,15 +34,20 @@ assert (eqclasses.length === 128, 'Character class table length')
 
 // ### States
 
-const [
+const states = {}
+const {
   FAIL, // Determined non-accepting
   MAIN, BIND, STR,  ESC,  ATTS, S1,   S2,   COL,  COL2, AVAL, // Contiguous non-accepting
-  ATEQ, ATOP, SID,  ATN,  ELN,  TVAL, ITER, IDEN, OP,   DATA,  COM, WSPS, WSCR, // Contiguous accepting
-  WSNL, LPAR, RPAR, LQUO, RQUO, EQ,   KEY,  LBRA, RBRA, // Determined accepting
-] = range (0)
+  AATN, ATOP, SID,  ATN,  ELN,  TVAL, ITER, IDEN, OP,   DATA,  COM, WSPS, WSCR, // Contiguous accepting
+  WSNL, LPAR, RPAR, LQUO, RQUO, EQ,   KEY,  LBRA, RBRA, // Determined accepting (Epsilon states)
+} = intsInto (states, 0)
 
-const min_accepting = ATEQ;
+const min_accepting = AATN;
 const min_epsilon   = WSNL;
+
+const stateNames = []
+for (const k in states)
+  stateNames[states[k]] = k
 
 
 // ### Transitions
@@ -51,8 +57,8 @@ const min_epsilon   = WSNL;
 
 const ___ = FAIL // cosmetic
 const transitions = [
-//0      1    2     3     4     5     6    7      8    9     10      11    12    13    14    15    16    17    18    19    20    21   22
-//___, MAIN, BIND, STR , ESC , ATTS, S1  , S2  , COL ,COL2, AVAL,   ATEQ, ATOP, SID , ATN , ELN , TVAL, ITER, IDEN,  OP , DATA, COM, WSPS, WSCR 
+//0      1    2     3     4     5     6    7      8     9     10    11     12    13    14    15    16    17    18    19    20    21   22    23
+//___, MAIN, BIND, STR , ESC , ATTS, S1  , S2  , COL , COL2, AVAL, AATN , ATOP, SID , ATN , ELN , TVAL, ITER, IDEN,  OP , DATA, COM, WSPS, WSCR 
  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , //  C0_
  ___ , WSPS, WSPS, DATA, ___ , WSPS, ___ , COM , ___ , ___ , WSPS,  WSPS, WSPS, ___ , ___ , ___ , ___ , ___ , ___ , WSPS, DATA, COM , WSPS, ___ , //  HT  
  ___ ,-WSNL,-WSNL,-WSNL, ___ ,-WSNL, ___ , ___ , ___ , ___ ,-WSNL, -WSNL,-WSNL, ___ , ___ , ___ , ___ , ___ , ___ ,-WSNL, ___ , ___ ,-WSNL,-WSNL, //  LF  
@@ -60,21 +66,21 @@ const transitions = [
  ___ , WSPS, WSPS, DATA, ___ , WSPS, ___ , COM , ___ , ___ , WSPS,  WSPS, WSPS, ___ , ___ , ___ , ___ , ___ , ___ , WSPS, DATA, COM , WSPS, ___ , //  SP  
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , // other
  ___ ,-LQUO, ___ ,-RQUO,-ESC , ___ , ___ , COM , ___ , ___ ,-LQUO,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , COM , ___ , ___ , //  "  
- ___ , SID , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  #  
+ ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COM , ___ , ___ , //  #  
  ___ ,-KEY , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ ,-KEY ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  $  
- ___ , TVAL, ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , TVAL,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  %  // REVIEW SID
+ ___ , TVAL, ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , TVAL,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  %  // REVIEW KEY/VAL
  ___ ,-LPAR, ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  (  
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ ,-RPAR, DATA, COM , ___ , ___ , //  )  
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , -OP , DATA, COM , ___ , ___ , // infix
  ___ , ___ , ___ , DATA, ___ , ATN , ___ , COM , SID , SID , ATN ,  ___ , ___ , SID , ATN , ELN , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  -  
- ___ , SID , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  .  
+ ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COM , ___ , ___ , //  .  
  ___ , ELN , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , SID , DATA, COM , ___ , ___ , //  @  // REVIEW ELN
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , COL2, ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , COL , DATA, COM , ___ , ___ , //  :  
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , -OP , DATA, COM , ___ , ___ , //  ;  
  ___ , ___ , ___ , DATA, ___ , ATN , ___ , COM , SID , SID , ATN ,  ___ , ___ , SID , ATN , ELN , TVAL, ITER, IDEN, ___ , DATA, COM , ___ , ___ , //  0-9 
  ___ , ELN , IDEN, DATA, ___ , ATN , ___ , COM , SID , SID , ATN ,  ___ , ___ , SID , ATN , ELN , TVAL, ITER, IDEN, ___ , DATA, COM , ___ , ___ , //  A-F 
  ___ , ELN , IDEN, DATA, ___ , ATN , ___ , COM , SID , SID , ATN ,  ___ , ___ , SID , ATN , ELN , TVAL, ITER, IDEN, ___ , DATA, COM , ___ , ___ , //  G-Z 
- ___ ,-LBRA, ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  [  
+ ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ ,-LBRA, DATA, COM , ___ , ___ , //  [  
  ___ , ___ , ___ , ESC ,-ESC , ___ , ___ , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , COM , ___ , ___ , //  \  
  ___ , ___ , ___ , DATA, ___ , ___ , ___ , COM , ___ , ___ , ___ , -RBRA,-RBRA, ___ , ___ , ___ , ___ , ___ , ___ , ___ , DATA, COM , ___ , ___ , //  ]  
  ___ , ___ , IDEN, DATA, ___ , ATN , ___ , COM , SID , SID , ATN ,  ___ , ___ , SID , ATN , ___ , TVAL, ITER, IDEN, ___ , DATA, COM , ___ , ___ , //  _  
@@ -86,7 +92,7 @@ const transitions = [
  ___ , S1  , ___ , DATA, ___ , ___ , S2  , COM , ___ , ___ , ___ ,  ___ , ___ , ___ , ___ , ___ , ___ , ___ , ___ , S1  , DATA, COM , ___ , ___   //  /
 ]
 
-// ATEQ is 'after attribute name'
+// AATN is 'after attribute name'
 // AVAL is 'after attribute assign ='
 // TODO force WSP between attribute and next attribute name
 
@@ -103,27 +109,21 @@ const Right = 1
 
 const optable = {
   // Infix ops // lexer ensures infix position
-  ';': [1, Assoc],
-  '|': [2, Assoc],
-  '+': [3, Right],
-  '>': [3, Right],
-// REVIEW op precedence
-  '~': [6, Left],   // Bind - lexer ensures rhs is an identifier
-  '*': [6, Left],   // Bind - lexer ensures rhs is an identifier
-
-   '': [5, Assoc],
-
-  '@': [6, Left],
-  ':': [6, Left],
-  '::': [6, Left],
-
-
-  // Postfix ops - Lexer ensures postfix position
-  // '.': [6, Left],
-  // '#': [6, Left],
+  ';':  [1, Assoc],
+  '|':  [2, Assoc],
+  '+':  [3, Right],
+  '>':  [3, Right],
+   '':  [4, Assoc],
+  '[]': [5, Left],
+  '~':  [5, Left],   // Bind - lexer ensures rhs is an identifier
+  '*':  [5, Left],   // Bind - lexer ensures rhs is an identifier // TODO require ** or *~ for that?
+  '@':  [5, Left],
+  ':':  [5, Left],
+  '::': [5, Left],
+  '.':  [5, Left],
+  '#':  [5, Left],
   // Attribute Lists
-  // '': [1, Assoc], // lexer ensures lhs/rhs are not nested
-   // '': [5, Left],
+  'att': [7, Assoc], // lexer ensures lhs/rhs are not nested
   '=': [8, Assoc], // lexer ensures lhs/rhs are not nested
 }
 
@@ -134,13 +134,14 @@ const optable = {
 // NOTE
 // OK so I'm making the grammar more uniform/ consistent,
 // by allowing elem, text, and attribute-lists on the same level.
-// That seems good, but now I need type assignments
-
+// That seems good, but now I need type assignments :S
+// OTPH, I want them anyway to determin output-size
 
 function Parser (delegate, entryState = MAIN) {
 
   // DFA driver state
 
+  let input = ''
   let entry = entryState
   let anchor = 0, end = 0, pos = 0
   let line = 1, lastnl = 0
@@ -152,23 +153,37 @@ function Parser (delegate, entryState = MAIN) {
 
   // Shunting yard
 
-  const ops = []
+  const ops = [] // operator stack
   const arities = [] // arities for ops
   const depths = [] // depths for ops
-  const operands = []
+  const operands = [] // operand stack  
+  
+  // API methods
 
-  // Methods
-
-  this.parse = function (input) {
-    this.write (input)
-    // this.end ()
-  }
-
-  this._tree = function () {
+  const self = this
+  this.parse = parse
+  this._state  = function () {
     return { operands, ops, arities, depths }
   }
 
-  this.write = function write (input) {
+  // Parser
+
+  function parse (_input) {
+    input = _input
+    write (input)
+    eof ()
+  }
+
+  function eof () {
+    log ('end', self._state  ())
+    if (depth !== 0)
+      throw new Error (createErrorMessage (input, 'Misnested parentheses'));
+    for (let i=ops.length-1; i>=0; i--)
+      _apply (ops.pop (), arities.pop (), depths.pop ())
+  }
+
+  function write (input_arg) {
+    input = input_arg
     const length = input.length
     while (pos < length) {
 
@@ -178,7 +193,7 @@ function Parser (delegate, entryState = MAIN) {
 
       while (state > 0 && pos < length) {
         const c = input.charCodeAt (pos++)
-        const cc = c <= 128 ? eqclasses[c] : eqclasses (0)
+        const cc = c <= 128 ? eqclasses[c] : eqclasses [0]
         // log ({state, c:input[pos-1], cc})
         state = transitions [cc * min_epsilon + state];
         // log ('==>', state)
@@ -196,14 +211,15 @@ function Parser (delegate, entryState = MAIN) {
         // Domex context
 
         case LPAR:
-          depth++; entry = MAIN; break;
+          depth++;
+          entry = MAIN; break;
 
         case ELN : case IDEN: // Operand
-          operands.push ([match, input.substring (anchor, end)]);
+          pushOperand (match, input.substring (anchor, end));
           entry = OP; break
 
         case KEY: case TVAL: // Operand, NB May occur also in attribute lists.
-          operands.push ([match, input.substring (anchor, end)]);
+          pushOperand (match, input.substring (anchor, end));
           entry = entry === AVAL ? ATOP : OP
         break
 
@@ -214,7 +230,7 @@ function Parser (delegate, entryState = MAIN) {
 
         case ITER: // Operator with conneced rhs
           pushOperator ([match, '*'], 2)
-          operands.push ([IDEN, input.substring (anchor+1, end)])
+          pushOperand (IDEN, input.substring (anchor+1, end))
           entry = OP
         break
 
@@ -224,25 +240,22 @@ function Parser (delegate, entryState = MAIN) {
         break
 
         case SID: // TODO clean up
+           // starting with one of #, ., @, : or ::
           const ch = input[anchor];
           if (ch === ':' && input[anchor+1] === ch) {
             pushOperator ([match, '::'], 2)
-            operands.push ([match, input.substring (anchor+2, end)]);
+            pushOperand (IDEN, input.substring (anchor+2, end));
             entry = OP
           }
-          else if (ch === '@' || ch === ':') {
+          else { // (ch === '@' || ch === ':' || ch === '.' || ch === '#')
             pushOperator ([match, ch], 2)
-            operands.push ([match, input.substring (anchor+1, end)]);
+            pushOperand (IDEN, input.substring (anchor+1, end));
             entry = OP
-          }
-          else {
-            operands.push ([match, input.substring (anchor, end)]);
-            entry = entry === MAIN || entry === BIND || entry === OP ? OP : ATOP
           }
         break
 
         case RPAR:
-          if (depth == 0) 
+          if (depth == 0)
             throw new Error (createErrorMessage (input, 'Misnested parenthesis'))
           depth--
           entry = OP
@@ -252,25 +265,21 @@ function Parser (delegate, entryState = MAIN) {
         // Attribute Lists
         
         case LBRA:
-          depth++
+          pushOperator ([match, '[]'], 2, ++depth)
           entry = ATTS
         break
 
         case ATN:
-          operands.push ([match, input.substring (anchor, end)])
-          entry = entry === AVAL ? ATOP : ATEQ // REVIEW
-        break
-
-        case ATEQ: 
-          pushOperator ([match, input.substring (anchor, end)], 2)
-          entry = ATTS
+          pushOperand (match, input.substring (anchor, end))
+          entry = entry === AVAL ? ATOP : AATN // REVIEW
         break
 
         case ATOP:
-          pushOperator ([match, input.substring (anchor, end)], 2)
+        case AATN: 
+          pushOperator ([match, 'att'], 2)
           entry = ATTS
         break
-          
+
         case EQ:
           pushOperator ([match, input.substring (anchor, end)], 2)
           entry = AVAL
@@ -278,21 +287,24 @@ function Parser (delegate, entryState = MAIN) {
 
         case RBRA:
           // Lexer ensures depth > 1
-          _endgroup (depth)
-          const l = operands.length-1
-          operands[l] = [[LBRA, 'attrs'], operands[l]]
-          depth--
+          endGroup ()
+          // OK, so endGroup here is only needed because ...
+          // well because what? I don't need it for the
+          // parens because the depth counter is used to determine
+          // the precedence anyway. So why here?
+          // const l = operands.length-1
+          // operands[l] = [[LBRA, 'attrs'], operands[l]]
           entry = OP
         break
 
         // Strings
 
         case LQUO: // begin group: quoted string
-          depth++
           afterString = entry === MAIN ? OP : ATOP;
-          ops.push ([LQUO, 'string'])
+          // pushOperator ([match, '""'], 0, ++depth)
+          ops.push ([match, '""'])
           arities.push (0)
-          depths.push (depth)
+          depths.push (++depth)
           entry = STR
         break
 
@@ -300,19 +312,18 @@ function Parser (delegate, entryState = MAIN) {
           let e = input[end-1]
           if ('nrt"\\'.indexOf(e) < 0)
             throw new Error (createErrorMessage (input, 'Invalid escape sequence'))
-          operands.push ([match, input.substring (anchor, end)])
+          pushOperand (match, input.substring (anchor, end))
           arities[arities.length-1]++
           entry = STR
         break
 
         case DATA: // Operand // TODO WSNL in strings
-          operands.push ([match, input.substring (anchor, end)])
+          pushOperand (match, input.substring (anchor, end))
           arities[arities.length-1]++
         break
 
         case RQUO:
-          _endgroup (depth);
-          depth--
+          endGroup ();
           entry = afterString
         break
 
@@ -330,36 +341,25 @@ function Parser (delegate, entryState = MAIN) {
 
       // Emit
       // log ([match, input.substring (anchor, end)])
-      delegate.write ([match, input.substring (anchor, end)], _entry)
-
+      delegate.write (_entry, [match, input.substring (anchor, end)])
       anchor = pos = end
     }
-    
-    _end (input)
   }
 
-  // Private
-
-  function createErrorMessage (input, desc = 'Syntax error') {
-    const col = pos - lastnl
-    const before = input.substr (pos-1, 12)
-    return `${desc} at line ${line}:${pos-lastnl}; before ${before} ; byte index ${pos}\n`
-  }
-
-  function _endgroup (depth) {
-    // log ('endgroup', {depth, operands, ops})
-    for (let i=ops.length-1; i>=0 && depths[i]>=depth; i--)
+  function endGroup () {
+    log ('endGroup', self._state ())
+    for (let i=ops.length-1; i>=0 && depths[i] >= depth; i--)
       _apply (ops.pop (), arities.pop (), depths.pop ())
+    depth--
   }
 
-  function _end (input) {
-    if (depth !== 0)
-      throw new Error (createErrorMessage (input, 'Misnested parenthesis')) // or string!
-    for (let i=ops.length-1; i>=0; i--)
-      _apply (ops.pop (), arities.pop (), depths.pop ())
+  function pushOperand (opcode, value) {
+    log ('pushOperand', [opcode, value], self._state ())
+    operands.push (apply ([opcode, value]))
   }
 
-  function pushOperator (op_b, arity=2) {
+  function pushOperator (op_b, arity=2, op_depth = depth) {
+    log ('pushOperator', op_b, self._state ())
     loop: while (1) {
       let action = Right // if no operators on op stack, else
 
@@ -370,8 +370,8 @@ function Parser (delegate, entryState = MAIN) {
         const top_depth = depths[ops.length-1]
 
         action =
-          top_depth < depth  ? Right :
-          top_depth > depth  ? Left  :
+          top_depth < op_depth  ? Right :
+          top_depth > op_depth  ? Left  :
           a_rank    > b_rank ? Left  :
           a_rank    < b_rank ? Right :
           a_assoc  // last case should assert a_assoc == b_assoc in the operator table
@@ -389,90 +389,266 @@ function Parser (delegate, entryState = MAIN) {
         case Right:
           ops.push (op_b)
           arities.push (arity) // TODO extend for postfix ops
-          depths.push (depth)
+          depths.push (op_depth)
           break loop
       }
     }
   }
 
+  // Private
+
+  function createErrorMessage (input, desc = 'Syntax error') {
+    const col = pos - lastnl
+    const before = input.substr (pos-1, 12)
+    return `${desc} at line ${line}:${pos-lastnl}; before ${before} ; byte index ${pos}\n`
+  }
+
   // AST construction
   function _apply (op, arity) {
-    // log ('apply', ({ operands, ops, arity, op}))
+    log ('apply', ({ operands, ops, arity, op}))
     // Assumes operands.length >= arity
+
     const args = []
-    while (arity--) args.unshift (operands.pop ()) 
-    apply (op, ...args)
-    operands.push ([op, ...args])
+    while (arity--) args.unshift (operands.pop ())
+    const result = apply (op, ...args)
+    log ('==>', result)
+
+    operands.push (result)
     // log ('apply result', op, ({ operands, ops }))
   }
 
 }
 
 
-// So what is the type language?
-// And what else do I want to track?
-// - baseType := TextNode | ElementNode // | AttList, AttName, AttVal,
-// - Static / Dynamic
-// - NodeList (Min_length, Max_length, Peer_NodeType)
-// - Peer_NodeType := Elem | TextNode | ElemOrTextNode
-// - Used references (list of @calls)
-// - ....
+// AST construction &
+// Bottom-up Type Assignment
 
-function apply (op, ...args) {
-  switch (op) {
+const { min, max } = Math
 
-    case LBRA:
-    // type = AttributeList
-    case ATOP:
-      // assert children are name=value pairs
-      // else set value to ''
-      // type is AttributeListInner (irrelevant, safe by grammar)
-    // case ATN:
-    // case RBRA:
-    // case ATEQ:
-    // case EQ:
+const NodeList = Symbol ('NodeList')
+const AttName = Symbol ('AttName')
+const AttList = Symbol ('AttList')
+const AttPair = Symbol ('AttPair')
+const ElementNode = Symbol ('ElementNode')
+const TextNode = Symbol ('TextNode')
+const GenericNode = Symbol ('GenericNode')
 
-    case SID:
 
+function typeUnion (left, right) {
+  log ('typeUnion', ...arguments)
+  assert (left.type === NodeList && right.type === NodeList, 'typeUnion')
+  return {
+    dynamic: left.dynamic || right.dynamic,
+    type: NodeList,
+    subtype: left.subtype === right.subtype ? left.subtype : GenericNode,
+    min: min (left.min, right.min),
+    max: max (left.max, right.max),
+  }
+}
+
+function apply ([opcode, opvalue], ...args) {
+  const left = args[0]
+  const right = args[1] // may be undefined
+  switch (opcode) {
+
+    // DOM Expressions
+
+    case IDEN: // REVIEW
     case ELN:
-      // type = Static, NodeList (ElementNode, 1, 1)
+      return {
+        dynamic: false,
+        type: NodeList,
+        subtype: ElementNode,
+        min:1, max:1,
+        ast:[...arguments]
+      }
 
     case KEY:
-      // type = Dynamic, NodeList (TextNode, 1, 1)
-
     case TVAL:
-      // type = Dynamic, NodeList (TextNode, 1, 1)
+      // ok that works but change the type representation, for this should also be ok as attribute value
+      return { dynamic:true, type:NodeList, subtype:TextNode, min:1, max:1, ast:[...arguments] }
 
-    case ITER:
-      // assert left.type is subtype of NodeList
-      // type = Dynamic,  NodeList (left.type, 0, Inf)
+    case SID:
+      log ('SID', opcode, opvalue, left, right)
+      // TODO
+      switch (opvalue[1] === ':' ? opvalue.substr(0,2) : opvalue[0]) {
+        case '#': 
+        case '.':
+          assert (left.subtype === ElementNode)
+        // fallthrough
 
-    case IDEN:
-      // ...
+        case '@': {
+          const r = Object.assign ({}, left)
+          r.dynamic = left.dynamic || right.dynamic
+          r.ast = [[opcode,opvalue], left.ast, right.ast]
+          return r
+        }
 
-    case OP: // spit out....
-      // Dynamic if one of lhs or rhs is
-      // case + => type = NodeList (peer(lhs.type, rhs.type), min(lhs.min, rhs.min), max (lhs.max, rhs.max)) // (unless some empty?)
-      // case | => implement type union
-      // case > --> assert left has only elements? --> type of lhs
-      // case apply --> assert left has only elems --> type of lhs
+        case ':':
+        case '::': 
+          const r = Object.assign ({}, left)
+          r.dynamic = true
+          r.min = 0,
+          r.max = left.max
+          r.ast = [[opcode,opvalue], left.ast, right.ast]
+          return r;
 
-    case LQUO:
-      // type = TextNode | AttValue
+        default: log (opcode, opvalue)
+      }
 
-    // case RQUO:
-    // case ESC:
-    // case DATA:
-    // case COM:
-    // case WSPS:
-    // case WSCR :
-    // case WSNL:
+    case ITER: {
+      log ('ITER', opcode, opvalue, left, right)
+      assert (left.type === NodeList)
+      return {
+        dynamic:true,
+        type:left.type,
+        subtype:left.subtype,
+        min: 0,
+        max: Infinity,
+        ast:[[opcode, opvalue], left.ast, right.ast]
+      }
+    }
 
-    default: log (op)
+    case OP:
+      const ast =
+        [[opcode, opvalue], left.ast, right.ast]
+
+      switch (opvalue) {
+        case '+': {
+          const r = typeUnion (left ,right)
+          r.min = left.min + right.min
+          r.max = left.max + right.max
+          r.ast = ast;
+          return r
+        }
+
+        case '|': {
+          const r = Object.assign ({}, args[args.length-1])
+          r.ast = [[opcode, opvalue]]
+          let unreachable = false
+          for (const x of args) {
+            assert (!unreachable, 'Unreachable alternative branch')
+            r.dynamic |= x.dynamic
+            if (x.min != 0) r.min = min (r.min, x.min)
+            r.max = max (r.max, x.max)
+            if (x.min != 0) unreachable = true
+            r.ast.push (x.ast)
+            r.subtype = r.subtype === x.subtype ? r.subtype : GenericNode
+          }
+          return r
+        }
+
+        case '>': {
+          assert (left.subtype === ElementNode)
+          const r = Object.assign ({}, left)
+          r.dynamic = left.dynamic || right.dynamic
+          r.ast = ast;
+          return r
+        }
+
+        case '': {
+          assert (left.subtype === ElementNode)
+          // OK but then also for attribute lists
+          const r = Object.assign ({}, left)
+          r.dynamic = left.dynamic || right.dynamic
+          r.ast = ast;
+          return r
+        }
+
+        case ';': { // let in
+          const r = Object.assign ({}, left)
+          r.dynamic = left.dynamic || right.dynamic
+          // TODO refine. Also track refs.
+          r.ast = ast;
+          return r
+        }
+
+      } break
+
+    // Apply attibute list
+
+    case LBRA: {
+      assert (left.subtype == ElementNode || left.subtype == GenericNode, 'Attempt to apply attributes to NodeList that does not contain ElementNodes')
+      args = args.slice (1)
+      const r = Object.assign ({}, left)
+      r.dynamic = args.reduce ((d, {dynamic}) => d ||dynamic , false)
+      r.ast = [[opcode, opvalue], left.ast, ... args.map (_ => _.ast)];
+      return r
+    }
+
+
+    // ### Attribute Lists
+
+    case AATN:
+    case ATOP: {
+      log ('ATOP', args)
+      // assert children are name=value pairs else set value to ''
+      // type is AttributeListInner (irrelevant, safe by grammar)
+      const r = {
+        type: AttList,
+        dynamic: args.reduce ((d, {dynamic}) => d ||dynamic , false)
+      }
+      r.ast = [[opcode, opvalue], ... args.map (_ => _.ast)];
+      return r
+    }
+
+    case ATN:
+      return {
+        dynamic: false,
+        type: AttName,
+        ast: [...arguments]
+      }
+
+    // AfterAttributeName
+    case AATN: {
+      const r = Object.assign ({}, right)
+      r.type = AttPair,
+      r.ast = [[opcode, opvalue], left.ast, right.ast];
+      return r
+    }
+
+    case EQ: {
+      const r = Object.assign ({}, right)
+      r.type = AttPair,
+      r.ast = [[opcode, opvalue], left.ast, right.ast];
+      return r
+    }
+    // ### Strings
+
+    case LQUO: 
+      // TODO adapt type for use also in attlists
+      return {
+        dynamic: false,
+        type: NodeList,
+        subtype: TextNode,
+        min: 1,
+        max: 1,
+        ast: [[opcode, opvalue], args.join ('')]
+      }
+
+    case ESC:
+      return {
+        'n':'\n',
+        'r':'\r',
+        't':'\t',
+        '"':'"',
+      } [opvalue[1]] ?? opvalue[1]
+
+    case DATA:
+      return opvalue
+
+    // case RQUO: // unreachable; LQUO used as group node
+    // case RBRA: // unreachable; LBRA used as group node
+    // case WSPS: // unreachable
+    // case WSCR: // unreachable
+    // case WSNL: // unreachable
+    // case COM:  // unreachable
+
+    default: log (opvalue)
   }
 }
 
 // Exports
 // -------
 
-export { Parser }
+export { Parser, stateNames }

@@ -106,17 +106,31 @@ aside {
   padding:0 0 0 .45rem;
 }
 
-#output pre span {
+.state--token {
+  display:inline-block;
+  height:2rem;
+}
+
+.state--token .state {
+  display:block;
+  position:absolute;
+  margin-top:1rem;
+  background:none;
+  font-family:Sans-Serif;
+  font-size:.5rem;
+}
+.state--token .token {
+}
+
+#output pre span.token {
   background:var(--screen);
   white-space:pre;
   margin:0 .1rem 0;
-  padding:.1rem .05rem 0 .05rem;
+  padding:.1rem .1rem 0;
 }
-#output pre span.state {
-  background:none;
-  font-family:Sans-Serif;
-  display:inline-block;
-  font-size:.5rem;
+
+.screen {
+  background:var(--screen);
 }
 
 pre {

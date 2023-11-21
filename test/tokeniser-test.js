@@ -1,4 +1,4 @@
-import { Tokeniser } from '../src/tokeniser.new.js'
+import { Parser } from '../src/parser.new.js'
 import { samples, antisamples } from './samples.js'
 const log = console.log.bind (console)
 
@@ -6,7 +6,7 @@ const failures = []
 
 log('\n')
 for (const sample of samples) {
-  const t = new Tokeniser ({write:log})
+  const t = new Parser ({write:log})
   log (sample, '\n=========================')
   try { t.parse (sample) }
   catch (error) { 

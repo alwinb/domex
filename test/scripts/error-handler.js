@@ -9,22 +9,31 @@ Object.defineProperty (Object.prototype, Symbol.toStringTag,
 // Render Errors using domex:
 
 const errorDx = domex `
-  a.error @frame
-    [href=%href title=%url] " » " %message " ";
+  span @frame
+    > " » "
+    + a.error [href=%href title=%url] %message;
 
-  div @error
+  div.br @error
     > h2.br0 %name ~error
-    + div.hstack.p0 > @frame *stack;
+    + div.hlist > @frame *stack;
 
   div.layer.error.notification
     > @error`
+
+const errsDiv =
+  document.createElement ('div')
+
+function clearErrors () {
+  errsDiv.innerHTML = ''
+}
 
 function showError (evt) {
   const { error, message, filename:url, lineno:line, colno:col } = evt
   const stack = parseStack (error.stack || String (error))
   const href = rewriteUrl (url, line, col) .href
   stack.push ({ message, line, col, url, href })
-  document.body.appendChild (errorDx.render ({ error, message:evt.message, stack }) .elem)
+  if (!errsDiv.parentNode) document.body.append (errsDiv)
+  errsDiv.append (errorDx.render ({ error, message:evt.message, stack }) .elem)
 }
 
 function parseStack (stack) {
@@ -32,7 +41,7 @@ function parseStack (stack) {
   for (let sline of stack.split ('\n')) {
     let message, rest, line, col, url, _;
     [message, rest] = sline.split (/@?(?=\bfile:[/][/])/i) // FF, Safari
-    if (url) {
+    if (rest) {
       const [_, url, line, col] = /^(.*)[:](\d+)[:](\d+)$/ .exec (rest)
       const href = rewriteUrl (url, line, col) .href
       result.unshift ({ message, url, line, col, href })
@@ -56,3 +65,4 @@ function rewriteUrl (url1, line = 1, column = 0) {
 // Main
 
 window.addEventListener ('error', showError)
+window.addEventListener ('keydown', evt => evt.metaKey && evt.code == 'KeyK' ? clearErrors () : null)
