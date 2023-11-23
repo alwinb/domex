@@ -103,7 +103,7 @@ const sample = domex `
 
 // ### Form
 
-const form = domex `
+const lib = domex `
   form @login
     > h1 "Login"
     + ( @input ~modified :modified
@@ -117,8 +117,15 @@ const form = domex `
     > span "name"
     + input [name=name value=%name];
 
-  div > @login + @default
+  div@form
+    > @login + @default;
+  
+  main
 `
+
+
+const form = lib.exports.form
+
 
 form.prepareData = (data, key) => {
   log ('form.prepareData', data, key)
