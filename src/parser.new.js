@@ -224,6 +224,7 @@ function Parser (delegate, entryState = MAIN) {
         break
 
         case OP: // Operator
+          // FIXME why only one '' gets applied?
           pushOperator ([match, input.substring (anchor, end)])
           entry = MAIN
         break;
