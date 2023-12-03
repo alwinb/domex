@@ -13,7 +13,7 @@ const call = (obj, fn, ...args) =>
 // Domex - Browser Version
 // =======================
 
-const version = '0.9.3'
+const version = '0.9.4'
 
 const lib = {
   
@@ -121,4 +121,6 @@ const domex = (...args) =>
 // Exports
 // =======
 
+Domex.version = version
+Object.assign (globalThis, { Domex, domex })
 export { version, Domex, domex }

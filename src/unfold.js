@@ -85,7 +85,8 @@ function unfold (expr, context = {})  {
       const deriv = unfold (expr, context)
       if (deriv[0]) {
         const ref = { value:data, data:data_, key, expr }
-        deriv[0] [refKey] = ref
+        deriv[0][refKey] = ref
+        // Add the @Name as a class
       }
       return deriv
     }
@@ -162,8 +163,16 @@ function unfold (expr, context = {})  {
 
   case T.descend: {
     // Syntactic transformation: (a1 + a2) > b ==> (a1 > b) + (a2 > b)
+    // FIXME this does not work if there's e.g. classnames tagged onto these things
+
     if (a[0][0] === T.sibling)
       return unfold ([[T.sibling, '+'], [[T.descend, '>'], a[1], b], [[T.descend, '>'], a[2], b]])
+
+    // Syntactic transformation: (a1 > a2) > b ==> a1 > (a2 > b)
+    // FIXME this does not work if there's e.g. classnames tagged onto these things
+    if (a[0][0] === T.descend)
+      return unfold ([[T.descend, '>'], a[1], [[T.descend, '>'], a[2], b]])
+
     // else unfold as usual
     const [elem, subs, sibs] = unfold (a, context)
     if (!elem) return [null, VOID, VOID]
@@ -207,9 +216,8 @@ function unfold (expr, context = {})  {
     
   case T.hash: {
     // // Syntactic transformation: (a1 + a2) #b ==> a1#b + a2#b
-    // // REVIEW, that'd mean multupe ids
-    // if (a[0][0] === T.sibling)
-    //   return unfold ([[T.sibling, '+'], [op, a[1]], [op, a[2]]])
+    if (a[0][0] === T.sibling)
+      return unfold ([[T.sibling, '+'], [op, a[1]], [op, a[2]]])
     // else unfold as usual
     const [elem, subs, sibs] = unfold (a, context)
     if (elem && elem.setAttribute)

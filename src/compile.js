@@ -23,9 +23,10 @@ const log = console.log.bind (console)
 // gets bound, or to a descendent object thereof.
 
 function bindDefs ({ expr, ops, name }) {
-  if (ops) { let o, l
-    for (o = ops; o [l = o.length - 1] != null; o = o[l]);
-    o[l] = expr
+  if (ops) {
+    let _ops, l
+    for (_ops = ops; _ops [l = _ops.length - 1] != null; _ops = _ops[l]);
+    _ops[l] = expr
     expr = ops
   }
   if (name != null)
@@ -80,7 +81,7 @@ function preEval (...expr) {
         const _expr = bindDefs (expr[i])
         if (_expr[0][0] === T.letin) {
           const name = _expr[0][1] .substr (1)
-          lib[name] = _expr [1] // store the body only
+          lib[name] = [[T.class, '@'+name], _expr [1]] // store the body only
         }
         // TODO throw on name clashes
       }

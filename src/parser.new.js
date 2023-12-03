@@ -243,7 +243,7 @@ function Parser (delegate, entryState = MAIN) {
         case SID: // TODO clean up
            // starting with one of #, ., @, : or ::
           const ch = input[anchor];
-          if (ch === ':' && input[anchor+1] === ch) {
+          if (ch === ':' && input[anchor+1] === ch) { // ::
             pushOperator ([match, '::'], 2)
             pushOperand (IDEN, input.substring (anchor+2, end));
             entry = OP

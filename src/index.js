@@ -8,7 +8,7 @@ const log = console.log.bind (console)
 // Domex
 // =====
 
-const version = '0.9.3'
+const version = '0.9.4'
 
 const lib = {
   
@@ -73,5 +73,3 @@ const domex = (...args) =>
 // =======
 
 export { version, Domex, domex }
-
-// Domex.fromFile (process.env.TM_PROJECT_DIRECTORY + '/test/test.dx') .then (log)
