@@ -9,8 +9,11 @@ const unfold = createUnfold ({ createElement, createTextNode })
 const call = (obj, fn, ...args) => 
   typeof fn === 'function' && fn.call (obj, ...args)
 
-// Domex
-// =====
+
+// Domex - Browser Version
+// =======================
+
+const version = '0.9.4'
 
 const lib = {
   
@@ -37,7 +40,12 @@ class Domex {
 
   constructor (string) {
     this.ast = bindDefs (parse (string, preEval))
-    this.exports = this.ast[0][0] === T.withlib ? this.ast[0][1] : Object.create (null)
+    this.exports = Object.create (null)
+    if (this.ast[0][0] === T.withlib) {
+      const lib = this.ast[0][1]
+      for (const k in lib) this.exports[k] = lib[k] = 
+        Object.setPrototypeOf ({ ast:[[T.withlib, lib], lib[k]] }, Domex.prototype)
+    }
   }
 
   withLib (lib) {
@@ -60,6 +68,7 @@ class Domex {
 
   // FIXME hooks are hacked in, may be buggy and only work with single-element domexes.
   // TODO stratify calls -- prevent redrawing from within didRender / didMount.
+  // TODO no, kill that nonsense
 
   render (data, key = null) {
     const context = { data, key, lib }
@@ -108,8 +117,10 @@ const domex = (...args) =>
   new Domex (String.raw (...args))
 
 
+
 // Exports
 // =======
 
-const version = '0.8.1-dev'
+Domex.version = version
+Object.assign (globalThis, { Domex, domex })
 export { version, Domex, domex }

@@ -8,10 +8,13 @@ sources = $(addprefix $(srcdir), $(files))
 
 run: all
 
-all: dist/$(bundle-name).js dist/$(bundle-name).min.js
+all: dist/$(bundle-name).js dist/$(bundle-name).min.js dist/$(bundle-name).iife.min.js
 
 dist/$(bundle-name).min.js: dist/ $(sources)
-	esbuild $(srcdir)$(bundle-entry) --minify --bundle --format=esm --outfile=dist/$(bundle-name).min.js
+	esbuild $(srcdir)$(bundle-entry) --minify --bundle --keep-names --format=esm --outfile=dist/$(bundle-name).min.js
+
+dist/$(bundle-name).iife.min.js: dist/ $(sources)
+	esbuild $(srcdir)$(bundle-entry) --minify --bundle --keep-names --format=iife --outfile=dist/$(bundle-name).iife.min.js
 
 dist/$(bundle-name).js: dist/ $(sources)
 	esbuild $(srcdir)$(bundle-entry) --bundle --format=esm --outfile=dist/$(bundle-name).js

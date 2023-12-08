@@ -23,7 +23,7 @@ const wrapfix = (...args) => {
 // =================
 
 const skips = {
-  space:   raw `[\t\f\x20]+`,
+  space:   raw `[\t\x20]+`,
   newline: raw `[\n]` , 
   comment: raw  `// [^\n]*`, 
 }

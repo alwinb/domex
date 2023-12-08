@@ -23,9 +23,10 @@ const log = console.log.bind (console)
 // gets bound, or to a descendent object thereof.
 
 function bindDefs ({ expr, ops, name }) {
-  if (ops) { let o, l
-    for (o = ops; o [l = o.length - 1] != null; o = o[l]);
-    o[l] = expr
+  if (ops) {
+    let _ops, l
+    for (_ops = ops; _ops [l = _ops.length - 1] != null; _ops = _ops[l]);
+    _ops[l] = expr
     expr = ops
   }
   if (name != null)
@@ -42,16 +43,16 @@ const _escapes =
 
 function preEval (...expr) {
   // log ('preEval', expr)
-  const [[opcode, opdata], x, y] = expr
+  const [[opcode, opdata], lhs, rhs] = expr
   switch (opcode) {
 
     // ### Dom operands
 
     case T.group: // replace `()` group with contents
-      return x // { expr: bindDefs (x) }
+      return lhs // { expr: bindDefs (lhs) }
 
     case T.text:
-      return { expr:[[T.text, x]], ops:null, name:null }
+      return { expr:[[T.text, lhs]], ops:null, name:null }
 
     case T.elem:
     case T.key:
@@ -80,7 +81,7 @@ function preEval (...expr) {
         const _expr = bindDefs (expr[i])
         if (_expr[0][0] === T.letin) {
           const name = _expr[0][1] .substr (1)
-          lib[name] = _expr [1] // store the body only
+          lib[name] = [[T.class, '@'+name], _expr [1]] // store the body only
         }
         // TODO throw on name clashes
       }
@@ -89,51 +90,51 @@ function preEval (...expr) {
 
     case T.descend: {
       const op = [T.descend, opdata]
-      const _expr = [op, x.expr, bindDefs (y)]
-      return { expr: bindDefs ({ ops:x.ops, expr:_expr, name:x.name }) }
+      const _expr = [op, lhs.expr, bindDefs (rhs)]
+      return { expr: bindDefs ({ ops:lhs.ops, expr:_expr, name:lhs.name }) }
     }
 
     // ### Dom operators (postfix)
 
     case T.def:
-      if (x.name != null)
+      if (lhs.name != null)
         throw new Error (`expression ${opdata} is already named ${name}`)
-      return { name:opdata, expr:x.expr, ops:x.ops }
+      return { name:opdata, expr:lhs.expr, ops:lhs.ops }
 
     case T.iter:
-      return { ops:[expr[0], x.ops], name:null, expr:x.expr }
+      return { ops:[expr[0], lhs.ops], name:null, expr:lhs.expr }
 
     case T.bind: case T.bindi: // REVIEW should bind distribute over defs or not?
     case T.test: case T.ttest:
     case T.class: case T.hash:
-      return { ops:[expr[0], x.ops], name:x.name, expr:x.expr }
+      return { ops:[expr[0], lhs.ops], name:lhs.name, expr:lhs.expr }
 
     case T.attr: { // 'add attributes': higher order postfix operator
-      switch (x[0][0]) {
+      switch (lhs[0][0]) {
         case T.unquoted: case T.collate: case T.assign: break
         default: throw new TypeError ('Invalid attribute expression')
       }
-      return { ops:[expr[0], x, y.ops], name:y.name, expr:y.expr }
+      return { ops:[expr[0], lhs, rhs.ops], name:rhs.name, expr:rhs.expr }
     }
 
     // ### Dom append operators -- convert postfix to private infix
 
     case T.addtext: { // wrapfix-postfix
-      const expr = [[T.append, " "], y.expr, [[T.text, x]]]
-      return { ops: y.ops, name:y.name, expr }
+      const expr = [[T.append, " "], rhs.expr, [[T.text, lhs]]]
+      return { ops: rhs.ops, name:rhs.name, expr }
     }
 
     case T.addkey: {
-      const expr = [[T.append, " "], x.expr, [[T.key, '$']]]
-      return { ops: x.ops, name:x.name, expr }
+      const expr = [[T.append, " "], lhs.expr, [[T.key, '$']]]
+      return { ops: lhs.ops, name:lhs.name, expr }
     }
 
     case T.addvalue:
     case T.addvaluei: {
       let vexpr = [[T.value, opdata]]
       if (opdata.length > 1) vexpr = [[T.bind, '~'+opdata.substr(1)], vexpr]
-      const expr = [[T.append, " "], x.expr, vexpr]
-      return { ops: x.ops, name:x.name, expr }
+      const expr = [[T.append, " "], lhs.expr, vexpr]
+      return { ops: lhs.ops, name:lhs.name, expr }
     }
 
     // ### Attributes
@@ -158,13 +159,13 @@ function preEval (...expr) {
       return expr
 
     case T.stringIn:
-      return [[expr[0][0], x]]
+      return [[expr[0][0], lhs]]
 
     case T.assign: { // assert additional type constraints
-      const yop = y[0][0]
-      if (x[0][0] !== T.unquoted) throw new TypeError ('Lhs of `=` must be an attribute name token')
+      const yop = rhs[0][0]
+      if (lhs[0][0] !== T.unquoted) throw new TypeError ('Lhs of `=` must be an attribute name token')
       if (yop === T.assign)   throw new TypeError ('Rhs of `=` must not be an assignment')
-      return [expr[0], x, y]
+      return [expr[0], lhs, rhs]
     }
 
     // ### Strings
@@ -177,7 +178,7 @@ function preEval (...expr) {
     case T.escape:    return _escapes [opdata[1]] || opdata[1]
     case T.empty:     return ''
     case T.hexescape: return String.fromCodePoint (parseInt (opdata.substr(2), 16))
-    case T.strCat:    return x + y
+    case T.strCat:    return lhs + rhs
 
     default:
       throw new TypeError (`compile: unknown operator type: ${opcode} ${N[opcode]}`)

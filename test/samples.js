@@ -1,7 +1,9 @@
 const samples = [
+  'input [type=radio]',
+  'input [type=radio checked]',
+  'div > foo + bar',
   'div > "foo\\nbar" + %',
   'div > "foo" + %name',
-  'foo + bar + baz | bee@a +  buzz + bazz | boo',
   'foo[bar=bee buzz= bazz bo]',
   'foo::string',
   'foo::string@f + (bar@x; buz) + be', // Hmmm is that as desired?
@@ -10,7 +12,7 @@ const samples = [
   'a#foo + b.boo > c > "zo\\no"',
   'a + b + c | d + e + f | g | h [i=j]',
   '\n( span::number    .number    > %)',
-  'a@one [foo="bee\\bar"] > (b | c) +d ; two@a > three',
+  'a@one [foo="bee\\tbar"] > (b | c) +d ; two@a > three',
   `elem "bar" + bee`,
   `h1 %title`,
   `span $`,
@@ -67,6 +69,7 @@ const antisamples = [ // These must throw
   'a[a=a %]',
   'a[d=f=g]',
   'a[a "b"]',
+  'foo + bar + baz | bee@a +  buzz + bazz | boo', // antissample: unreachable alternative branch
 ]
 
 

@@ -8,6 +8,8 @@ const log = console.log.bind (console)
 // Domex
 // =====
 
+const version = '0.9.4'
+
 const lib = {
   
   default: bindDefs (parse (`
@@ -33,7 +35,12 @@ class Domex {
 
   constructor (string) {
     this.ast = bindDefs (parse (string, preEval))
-    this.exports = this.ast[0][0] === T.withlib ? this.ast[0][1] : Object.create (null)
+    this.exports = Object.create (null)
+    if (this.ast[0][0] === T.withlib) {
+      const lib = this.ast[0][1]
+      for (const k in lib) this.exports[k] = 
+        Object.setPrototypeOf ({ ast:[[T.withlib, lib], lib[k]] }, Domex.prototype)
+    }
   }
 
   static async fromFile (path, cb) {
@@ -65,7 +72,4 @@ const domex = (...args) =>
 // Exports
 // =======
 
-const  version = '0.8.1-dev'
-export { Domex, domex }
-
-// Domex.fromFile (process.env.TM_PROJECT_DIRECTORY + '/test/test.dx') .then (log)
+export { version, Domex, domex }

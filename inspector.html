@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Domex Inspector Page</title>
+  <link rel="stylesheet" href="test/style/base.css">
+  <link rel="stylesheet" href="test/style/main.css">
+  <script type=module src="test/scripts/error-handler.js"></script>
+</head>
+<body>
+<script type=module>
+  
+  import { Domex, domex, version } from './src/browser.js'
+  import { Parser, stateNames } from './src/parser.new.js'
+  import { samples } from './test/samples.js'
+  const $ = _ => document.getElementById (_)
+  const log = console.log.bind (console)
+  
+  // ### Set up CSS debug via alt-click
+
+  window.addEventListener ('click', e => {
+    if (e.altKey) document.documentElement.classList.toggle ('debug')
+  })
+
+
+  // Domex Inspector Page
+  // --------------------
+  
+  // ### UI definitions
+
+  const uidx = domex `
+    
+    header @header
+      > h1 "Domex Test Page"
+      + p "Version " %version ".";
+    
+    aside @aside
+      > ul.vstack.Samples > li[data-key=$]* "Sample " $;
+
+    main.vstack @main
+      > textarea #input
+      + div.vstack #output;
+    
+    @header
+    + @aside.fl.scrolly ~samples
+    + @main
+
+  `
+
+  const inspectDx = domex `
+    span.state--token @token
+      > span.state %entry 
+      + span.token [title=%0] %1 ~token;
+
+    div.br #output
+      > (section.Tokens > h2 "Tokens" + pre > @token*) ~tokens
+      + div.hstack
+        > (section.Ast#ast > h2 "AST")
+        + (section.Meta > h2 "Meta" + @default) ~meta
+
+  `
+
+  // ### Wrap Tokeniser
+  
+  function parse (input) {
+    const tokens = []
+    const t = new Parser ({ write: (entry, [t,v]) => tokens.push ({entry, token:[stateNames[t], v] }) })
+    t.parse (input)
+    return { tokens, state:t._state() }
+  }
+
+  // ### Set up event handlers
+
+  document.addEventListener ('keydown', evt => {
+    if (evt.key === 'Meta') {
+      showInput ($('input').value)
+    }
+    if (evt.code === 'KeyK' && evt.metaKey)
+      console.clear ()
+  })
+
+  let selected
+  document.addEventListener ('click', evt => {
+    let key
+    if (key = evt.target.getAttribute ('data-key')) {
+      const sample = samples [parseInt(key)]
+      if (selected) selected.classList.remove ('selected')
+      selected = evt.target
+      selected.classList.add ('selected')
+      showInput (sample)
+    }
+  })
+
+  // UI render / update function
+
+  let lastInput = ''
+  function showInput (input) {
+    if (input === lastInput) return
+    lastInput = input;
+    $('input').value = input
+    const { tokens, state } = parse (input)
+    const { dynamic, min, max, type, subtype, } = state.operands[0]
+    const rendered = inspectDx.render ({tokens, meta: {dynamic, min, max, type, subtype}}) .elem
+    $('output').replaceWith (rendered)
+    $('ast').append (vizAst (state.operands[0]))
+  }
+  
+  function vizAst (ast) { // visualises a domex AST
+    log (ast)
+    return _vizAst (ast.ast)
+  }
+
+  function _vizAst (ast) { // visualises a domex AST
+    if (Array.isArray (ast[0])) { // Node
+      const [[op, opdata], ...children] = ast
+      if (opdata === '""')
+        return domex `code.screen > %1` .render (ast) .elem
+      
+      const node = domex `
+        div.AstNode 
+          > (b[title=%op] > (%:length~opdata | "ε"))
+          + div.operands` .render ({op, opdata}) .elem
+        for (const x of children)
+          node.lastChild.append (_vizAst (x))
+      return node
+    }
+    return domex `div.AstNode > code %` .render (ast) .elem
+  }
+
+  // ### Main
+
+  function main () {
+    document.body.append (uidx.render ({ version, samples }) .elems)
+    showInput (samples[0])
+    selected = document.querySelector('li[data-key="0"]')
+    selected.classList.add ('selected')
+    $('input').focus ()
+  }
+
+  main ();
+
+</script>
+</body>
+</html>
